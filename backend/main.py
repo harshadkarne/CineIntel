@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from services.data_service import DataService
 from services.ml_service import MLService
-from routes import dashboard, genre, risk, combinations, predict
+from routes import dashboard, genre, risk, combinations, predict, movies
 
 # Global services
 data_service = None
@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
     genre.set_data_service(data_service)
     risk.set_data_service(data_service)
     combinations.set_data_service(data_service)
+    movies.set_data_service(data_service)
     predict.set_ml_service(ml_service)
     
     print("✅ CineIntel Backend Ready!")
@@ -61,6 +62,7 @@ app.include_router(genre.router)
 app.include_router(risk.router)
 app.include_router(combinations.router)
 app.include_router(predict.router)
+app.include_router(movies.router)
 
 
 @app.get("/")
@@ -92,4 +94,46 @@ async def health_check():
             "ml_service": ml_service is not None,
             "model_accuracy": round(ml_service.model_accuracy, 4) if ml_service else 0
         }
+    }
+
+# --- New SaaS Endpoints ---
+
+@app.get("/api/model/transparency")
+async def get_model_transparency():
+    """Get model transparency metrics"""
+    if not ml_service:
+        return {"error": "ML Service not initialized"}
+    return ml_service.get_model_transparency()
+
+@app.post("/api/predict/compare")
+async def compare_plans(plans: dict):
+    """Compare two investment plans"""
+    if not ml_service:
+        return {"error": "ML Service not initialized"}
+    
+    # Expecting { "plan_a": {...}, "plan_b": {...} }
+    return ml_service.compare_investment_plans(plans.get('plan_a'), plans.get('plan_b'))
+
+@app.get("/api/dashboard/strategic-insight")
+async def get_strategic_insight():
+    """Get AI strategic insight"""
+    if not data_service:
+        return {"error": "Data Service not initialized"}
+    return data_service.get_strategic_insight()
+
+@app.get("/api/dashboard/capital-allocation")
+async def get_capital_allocation():
+    """Get capital allocation strategy"""
+    if not data_service:
+        return {"error": "Data Service not initialized"}
+    return data_service.get_capital_allocation_strategy()
+
+@app.post("/api/report/export")
+async def export_report(data: dict):
+    """Generate export report (Mock)"""
+    # In a real app, this would generate a PDF
+    return {
+        "status": "success", 
+        "message": "Report generation initiated.",
+        "download_url": "#" 
     }

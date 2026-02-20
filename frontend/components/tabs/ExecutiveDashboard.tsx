@@ -2,14 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import {
+  BarChart3,
+  TrendingUp,
+  AlertCircle,
+  Zap,
+  Target,
+  PieChart,
+  Calendar,
+  IndianRupee,
+  Activity,
+  ArrowUpRight
+} from "lucide-react";
 
 export default function ExecutiveDashboard() {
   const [summary, setSummary] = useState<any>(null);
-  const [aiRec, setAiRec] = useState<any>(null);
-  const [selectedGenre, setSelectedGenre] = useState("");
-  const [budget, setBudget] = useState("");
-  const [budgetOpt, setBudgetOpt] = useState<any>(null);
-  const [releaseTiming, setReleaseTiming] = useState<any>(null);
+  const [marketPulse, setMarketPulse] = useState<any>(null);
   const [genres, setGenres] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -19,13 +27,13 @@ export default function ExecutiveDashboard() {
 
   const loadData = async () => {
     try {
-      const [summaryData, aiData, genresData] = await Promise.all([
+      const [summaryData, pulseData, genresData] = await Promise.all([
         api.getDashboardSummary(),
-        api.getAIRecommendation(),
+        api.getMarketPulse(),
         api.getAllGenres(),
       ]);
       setSummary(summaryData);
-      setAiRec(aiData);
+      setMarketPulse(pulseData);
       setGenres(genresData.genres || []);
     } catch (error) {
       console.error("Error loading dashboard:", error);
@@ -34,175 +42,174 @@ export default function ExecutiveDashboard() {
     }
   };
 
-  const handleBudgetOptimization = async () => {
-    if (!selectedGenre || !budget) return;
-    try {
-      const data = await api.getBudgetOptimization(selectedGenre, parseFloat(budget));
-      setBudgetOpt(data);
-    } catch (error) {
-      console.error("Error:", error);
-    }
-  };
-
-  const handleReleaseTiming = async () => {
-    if (!selectedGenre) return;
-    try {
-      const data = await api.getReleaseTiming(selectedGenre);
-      setReleaseTiming(data);
-    } catch (error) {
-      console.error("Error:", error);
-    }
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-shimmer glass p-8 rounded-lg">
-          <p className="text-gray-400">Loading dashboard...</p>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-32 glass rounded-2xl" />
+        ))}
+        <div className="md:col-span-2 lg:col-span-3 h-64 glass rounded-3xl" />
+        <div className="h-64 glass rounded-3xl" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div className="glass glow-card p-6 rounded-xl animate-slide-up">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-400">Total Movies</h3>
+    <div className="space-y-8 page-transition">
+      {/* Hero / Market Pulse Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-3 glass rounded-3xl p-8 relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+            <Activity size={120} className="text-primary" />
           </div>
-          <p className="text-3xl font-bold text-white">{summary?.total_movies || 0}</p>
-          <p className="text-xs text-gray-500 mt-1">Analyzed (2001-2019)</p>
-        </div>
 
-        <div className="glass glow-card p-6 rounded-xl animate-slide-up" style={{ animationDelay: "0.2s" }}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-400">Highest ROI Genre</h3>
-          </div>
-          <p className="text-xl font-bold text-secondary">{summary?.highest_roi_genre?.genre || "N/A"}</p>
-          <p className="text-xs text-gray-500 mt-1">{summary?.highest_roi_genre?.avg_roi || 0}x ROI</p>
-        </div>
+          <div className="relative z-10">
+            <div className="flex items-center gap-2 mb-4">
+              <span className="badge risk-safe">AI Market Pulse</span>
+              <span className="text-xs text-gray-500">• Real-time Analytics</span>
+            </div>
 
-        <div className="glass glow-card p-6 rounded-xl animate-slide-up" style={{ animationDelay: "0.3s" }}>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-400">2019 Top Genre</h3>
-          </div>
-          <p className="text-xl font-bold text-primary">{summary?.latest_trend?.top_genre || "N/A"}</p>
-          <p className="text-xs text-gray-500 mt-1">Latest Market Trend</p>
-        </div>
-      </div>
+            <h1 className="text-4xl font-bold text-white mb-6">
+              Market Sentiment: <span className="text-gradient">{marketPulse?.sentiment || "Neutral"}</span>
+            </h1>
 
-      {/* AI Recommendation */}
-      <div className="glass p-6 rounded-xl">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          AI Recommendation Engine
-        </h2>
-        <div className="bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/30 rounded-lg p-6">
-          <p className="text-lg leading-relaxed">{aiRec?.recommendation || "Loading..."}</p>
-          {aiRec && (
-            <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-gray-400">Top Genre</p>
-                <p className="font-semibold text-white">{aiRec.top_genre}</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Market Velocity</p>
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-white">{marketPulse?.roi_velocity || 0}x</span>
+                  <span className="text-emerald-400 text-xs font-bold mb-1 flex items-center gap-0.5">
+                    <ArrowUpRight size={12} /> 12%
+                  </span>
+                </div>
               </div>
-              <div>
-                <p className="text-gray-400">ROI Volatility</p>
-                <p className="font-semibold text-white">{aiRec.roi_volatility}</p>
+
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Risk Index</p>
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-white">{marketPulse?.risk_index || 0}σ</span>
+                  <span className="text-amber-400 text-xs font-bold mb-1 italic">Stable</span>
+                </div>
               </div>
-              <div>
-                <p className="text-gray-400">Risk Level</p>
-                <p className={`font-semibold ${
-                  aiRec.risk_level === 'High' ? 'text-red-400' :
-                  aiRec.risk_level === 'Moderate' ? 'text-yellow-400' : 'text-green-400'
-                }`}>{aiRec.risk_level}</p>
+
+              <div className="space-y-1">
+                <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Rising Segment</p>
+                <div className="flex items-end gap-2">
+                  <span className="text-3xl font-bold text-white truncate max-w-[150px]">
+                    {marketPulse?.top_growing_segment || "Drama"}
+                  </span>
+                </div>
               </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Budget Optimization */}
-      <div className="glass p-6 rounded-xl">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          Budget Optimization Suggestion
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <select
-            value={selectedGenre}
-            onChange={(e) => setSelectedGenre(e.target.value)}
-            className="bg-card border border-border rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">Select Genre</option>
-            {genres.map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-          <input
-            type="number"
-            value={budget}
-            onChange={(e) => setBudget(e.target.value)}
-            placeholder="Enter budget (₹)"
-            className="bg-card border border-border rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-          <button
-            onClick={handleBudgetOptimization}
-            className="bg-primary hover:bg-primary-dark text-white rounded-lg px-6 py-2 font-semibold transition-colors"
-          >
-            Analyze
-          </button>
-        </div>
-        {budgetOpt && (
-          <div className={`p-4 rounded-lg ${
-            budgetOpt.status === 'above_average' ? 'bg-red-500/10 border border-red-500/30' : 'bg-green-500/10 border border-green-500/30'
-          }`}>
-            <p className="text-white">{budgetOpt.message}</p>
           </div>
-        )}
+        </div>
+
+        <div className="glass rounded-3xl p-8 flex flex-col justify-center bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
+          <p className="text-xs text-gray-400 font-bold uppercase mb-2">Total Managed Volume</p>
+          <div className="text-4xl font-black text-white mb-2">
+            ₹{(summary?.total_revenue / 10000000).toFixed(0)}<span className="text-primary text-2xl">Cr</span>
+          </div>
+          <p className="text-[10px] text-gray-500 italic">Historical box office aggregate ({summary?.total_movies} titles)</p>
+        </div>
       </div>
 
-      {/* Release Timing */}
-      <div className="glass p-6 rounded-xl">
-        <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-          Release Timing Suggestion
-        </h2>
-        <div className="flex gap-4 mb-4">
-          <select
-            value={selectedGenre}
-            onChange={(e) => setSelectedGenre(e.target.value)}
-            className="flex-1 bg-card border border-border rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="">Select Genre</option>
-            {genres.map((g) => (
-              <option key={g} value={g}>{g}</option>
-            ))}
-          </select>
-          <button
-            onClick={handleReleaseTiming}
-            className="bg-primary hover:bg-primary-dark text-white rounded-lg px-6 py-2 font-semibold transition-colors"
-          >
-            Get Timing
-          </button>
-        </div>
-        {releaseTiming && (
-          releaseTiming.error ? (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4">
-              <p className="text-red-400">{releaseTiming.error}</p>
+      {/* Strategic AI Insight & Capital Allocation */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Strategic AI Insight */}
+        <div className="glass rounded-3xl p-8 space-y-6 glow-card">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Zap className="text-primary" size={20} /> Strategic Intelligence
+            </h2>
+            <Target className="text-gray-600" size={20} />
+          </div>
+
+          <div className="bg-white/[0.03] p-6 rounded-2xl border border-white/[0.05]">
+            <p className="text-lg text-gray-200 leading-relaxed font-medium">
+              "{summary?.strategic_insight?.text || "Synchronizing with latest market delta..."}"
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="glass-card p-4">
+              <p className="text-[10px] text-gray-500 font-bold uppercase">Top Alpha</p>
+              <p className="text-lg font-bold text-secondary">{summary?.strategic_insight?.top_roi_genre}</p>
             </div>
-          ) : (
-            <div className="bg-primary/10 border border-primary/30 rounded-lg p-4">
-              <p className="text-white mb-4">{releaseTiming.message}</p>
-              <div className="grid grid-cols-3 gap-4">
-                {releaseTiming.monthly_data?.map((m: any) => (
-                  <div key={m.month} className="text-center">
-                    <p className="text-gray-400 text-sm">{m.month}</p>
-                    <p className="text-white font-semibold">{m.avg_roi}x ROI</p>
+            <div className="glass-card p-4">
+              <p className="text-[10px] text-gray-500 font-bold uppercase">Anchor Segment</p>
+              <p className="text-lg font-bold text-emerald-400">{summary?.strategic_insight?.safest_genre}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Capital Allocation Strategy */}
+        <div className="glass rounded-3xl p-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <PieChart className="text-primary" size={20} /> Capital Allocation
+            </h2>
+            <div className="text-[10px] py-1 px-2 glass rounded-full text-gray-400 uppercase font-black">
+              Phase: {summary?.strategic_insight?.market_phase || "Expansion"}
+            </div>
+          </div>
+
+          <div className="space-y-6 pt-2">
+            {summary?.capital_allocation ? (
+              Object.entries(summary.capital_allocation).map(([category, percent], i) => (
+                <div key={category} className="space-y-2 group">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-bold text-gray-300 group-hover:text-white transition-colors">
+                      {category}
+                    </span>
+                    <span className="text-sm font-black text-white">{percent as any}%</span>
                   </div>
-                ))}
-            </div>
+                  <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ease-out ${i === 0 ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]' :
+                          i === 1 ? 'bg-primary shadow-[0_0_10px_rgba(99,102,241,0.3)]' :
+                            'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.3)]'
+                        }`}
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="h-40 flex items-center justify-center text-gray-500 italic">Calculating...</div>
+            )}
           </div>
-          )
-        )}
+        </div>
+      </div>
+
+      {/* Snapshot / Summary Feed */}
+      <div className="glass rounded-3xl p-8">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-xl font-black text-white uppercase tracking-tighter italic">Market Snapshot / Monthly Pulse</h2>
+          <button className="text-xs text-primary font-bold hover:underline">View All Intelligence</button>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          <div className="glass-card p-6 text-center">
+            <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Avg. Sample Size</p>
+            <p className="text-2xl font-bold text-white">{(summary?.total_movies / 19).toFixed(0)}</p>
+            <p className="text-[10px] text-gray-600">Per Genre Segment</p>
+          </div>
+          <div className="glass-card p-6 text-center">
+            <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Success Rate</p>
+            <p className="text-2xl font-bold text-primary">{summary?.overall_success_rate}%</p>
+            <p className="text-[10px] text-gray-600">Global Average</p>
+          </div>
+          <div className="glass-card p-6 text-center">
+            <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Peak Year</p>
+            <p className="text-2xl font-bold text-white">2019</p>
+            <p className="text-[10px] text-gray-600">Revenue Dominance</p>
+          </div>
+          <div className="glass-card p-6 text-center">
+            <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">AI Confidence</p>
+            <p className="text-2xl font-bold text-emerald-400">High</p>
+            <p className="text-[10px] text-gray-600">Data Reliability</p>
+          </div>
+        </div>
       </div>
     </div>
   );

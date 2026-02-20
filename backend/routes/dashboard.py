@@ -46,3 +46,21 @@ async def get_release_timing(genre: str):
         return data_service.get_release_timing(genre)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/market-pulse")
+async def get_market_pulse():
+    """Get AI Market Pulse"""
+    try:
+        return data_service.get_market_pulse()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/top-performers")
+async def get_top_performers(limit: int = 12):
+    """Get top performing movies"""
+    try:
+        return data_service.get_top_performing_movies(limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

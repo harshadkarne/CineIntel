@@ -86,3 +86,30 @@ async def get_year_range():
         return data_service.get_year_range()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/yearly")
+async def get_genre_yearly():
+    """Get yearly genre statistics"""
+    try:
+        return data_service.load_genre_yearly()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/overall")
+async def get_genre_overall():
+    """Get overall genre statistics"""
+    try:
+        return data_service.load_genre_overall()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/benchmark")
+async def get_benchmark(genre_a: str = Query(...), genre_b: str = Query(...)):
+    """Compare two genres for benchmarking"""
+    try:
+        return data_service.get_benchmark_data(genre_a, genre_b)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

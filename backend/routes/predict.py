@@ -34,3 +34,25 @@ async def predict_movie_success(request: PredictionRequest):
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+class SimulatorRequest(BaseModel):
+    genre: str
+    budget: float
+    runtime: int
+    release_month: int
+
+
+@router.post("/simulator")
+async def predict_simulator(request: SimulatorRequest):
+    """Data-driven simulator prediction"""
+    try:
+        result = ml_service.predict_simulator(
+            genre=request.genre,
+            budget=request.budget,
+            runtime=request.runtime,
+            release_month=request.release_month
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

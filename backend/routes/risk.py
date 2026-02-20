@@ -11,6 +11,16 @@ def set_data_service(ds):
     data_service = ds
 
 
+@router.get("/genre")
+async def get_genre_risk():
+    """Get risk analysis for all genres from statistics"""
+    try:
+        df = data_service.load_risk_data()
+        return df.to_dict('records')
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.get("/analysis")
 async def get_risk_analysis():
     """Get risk analysis for all genres"""

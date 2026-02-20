@@ -2,208 +2,242 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  PieChart,
+  Pie,
+  Cell,
+  ScatterChart,
+  Scatter,
+  ZAxis
+} from "recharts";
+import { TrendingUp, Award, PieChart as PieIcon, BarChart3, Info, Download, Filter } from "lucide-react";
+
+const COLORS = ['#6366f1', '#ec4899', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16'];
 
 export default function GenreIntelligence() {
-  const [revenueData, setRevenueData] = useState<any[]>([]);
-  const [roiData, setRoiData] = useState<any[]>([]);
-  const [genres, setGenres] = useState<string[]>([]);
-  const [selectedYear, setSelectedYear] = useState(2017); // Default to a recent year with good data
-  const [topGenres, setTopGenres] = useState<any[]>([]);
+  const [overallData, setOverallData] = useState<any[]>([]);
+  const [yearlyData, setYearlyData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // Generate year options
-  const years = Array.from({ length: 2019 - 2001 + 1 }, (_, i) => 2001 + i);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  useEffect(() => {
-    loadChartData();
-  }, [selectedYear]);
-
   const loadData = async () => {
+    setLoading(true);
+    setError(null);
     try {
-      const genresData = await api.getAllGenres();
-      setGenres(genresData.genres || []);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error:", error);
-      setLoading(false);
-    }
-  };
-
-  const loadChartData = async () => {
-    try {
-      // Use selectedYear for both the podium and the revenue chart context if needed, 
-      // but revenue chart usually shows trend. Let's keep revenue chart showing full history 
-      // or maybe filtered? The request said "change filter section to one dropdown... select only one year".
-      // This implies the whole tab might be focused on that year? 
-      // OR just the podium? 
-      // "and below that rather than showing a graph , change it to top 3...". 
-      // The "Highest Grossing Genre Per Year" chart below that usually shows a trend. 
-      // Let's keep the trend charts showing the full range (2001-2019) for context, 
-      // but the Top section is governed by the specific year selector.
-      
-      const [top, rev, roi] = await Promise.all([
-        api.getTopGenresByYear(selectedYear),
-        api.getHighestGrossing(2001, 2019), // Keep full history for context
-        api.getROI(),
+      const [overall, yearly] = await Promise.all([
+        api.getGenreOverall(),
+        api.getGenreYearly(),
       ]);
-
-      setTopGenres(top);
-      setRevenueData(rev);
-      setRoiData(roi);
+      setOverallData(overall);
+      setYearlyData(yearly);
     } catch (error) {
-      console.error("Error loading charts:", error);
+      console.error("Error fetching genre data:", error);
+      setError("Failed to load cinematic intelligence. Please check backend connectivity.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (loading) {
-    return <div className="text-center text-gray-400">Loading...</div>;
-  }
+  if (loading) return (
+    <div className="space-y-8 animate-pulse">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="h-80 glass rounded-3xl" />
+        <div className="h-80 glass rounded-3xl" />
+      </div>
+      <div className="h-96 glass rounded-3xl" />
+      <div className="h-80 glass rounded-3xl" />
+    </div>
+  );
 
-  // Custom tooltips
-  const CustomBarTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-card border border-border p-3 rounded-lg shadow-xl">
-          <p className="font-bold text-white mb-1">{label}</p>
-          <p className="text-sm text-gray-300">Genre: <span className="text-white font-semibold">{data.genre}</span></p>
-          <p className="text-sm text-gray-300">Top Movie: <span className="text-accent font-semibold">{data.top_movie}</span></p>
-          <p className="text-sm text-gray-300">Revenue: <span className="text-green-400">₹{data.total_box_office.toLocaleString()}</span></p>
-        </div>
-      );
-    }
-    return null;
-  };
+  if (error) return (
+    <div className="flex flex-col items-center justify-center py-32 glass rounded-3xl border-dashed border-white/10">
+      <Info size={48} className="text-rose-500 mb-4" />
+      <p className="text-white text-lg font-medium">{error}</p>
+      <button
+        onClick={loadData}
+        className="mt-4 px-6 py-2 bg-primary/20 hover:bg-primary/40 text-primary rounded-xl transition-all font-bold"
+      >
+        Retry Connection
+      </button>
+    </div>
+  );
 
-  // Podium Helpers
-  const getPodiumOrder = (genres: any[]) => {
-    // Expected order for display: 2nd, 1st, 3rd (Silver, Gold, Bronze)
-    if (genres.length < 3) return genres;
-    return [genres[1], genres[0], genres[2]];
-  };
-
-  const podiumData = getPodiumOrder(topGenres);
+  if (!overallData.length && !yearlyData.length) return (
+    <div className="flex flex-col items-center justify-center py-32 glass rounded-3xl border-dashed border-white/10">
+      <Filter size={48} className="text-gray-600 mb-4" />
+      <p className="text-gray-400 text-lg font-medium">No genre intelligence records found in the master slate.</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-8">
-      {/* Filters - Single Year */}
-      <div className="glass p-6 rounded-xl">
-        <h2 className="text-xl font-bold mb-4">Filters</h2>
+    <div className="space-y-8 page-transition pb-20">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <label className="block text-sm text-gray-400 mb-2">Select Year</label>
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-            className="bg-card border border-border rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-primary w-full md:w-64"
-          >
-            {years.map(y => (
-              <option key={y} value={y}>{y}</option>
-            ))}
-          </select>
+          <h1 className="text-3xl font-bold text-white mb-2">Genre Intelligence</h1>
+          <p className="text-gray-400">Deep-dive into genre performance cycles and historical ROI clusters.</p>
+        </div>
+        <div className="flex gap-3">
+          <button className="glass p-3 rounded-xl text-gray-400 hover:text-white transition-all">
+            <Download size={20} />
+          </button>
         </div>
       </div>
 
-      {/* Genre Podium */}
-      <div className="glass p-8 rounded-xl min-h-[400px] flex flex-col items-center justify-center relative overflow-hidden">
-        <h2 className="text-2xl font-bold mb-8 text-center text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-yellow-200 to-yellow-400">
-          Top Genres of {selectedYear}
-        </h2>
-        
-        {/* Spotlight Effect Background */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full pointer-events-none opacity-20">
-          <div className="absolute top-0 left-1/4 w-32 h-full bg-white blur-[100px] transform -rotate-12"></div>
-          <div className="absolute top-0 right-1/4 w-32 h-full bg-white blur-[100px] transform rotate-12"></div>
-        </div>
-
-        {topGenres.length === 0 ? (
-           <p className="text-gray-400">No data available for this year.</p>
-        ) : (
-          <div className="flex items-end justify-center gap-4 md:gap-8 z-10 w-full max-w-2xl">
-            {/* 2nd Place */}
-            {podiumData[0] && (
-              <div className="flex flex-col items-center w-1/3 group">
-                <div className="mb-2 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <p className="font-bold text-silver-400 text-lg">{podiumData[0].genre}</p>
-                  <p className="text-sm text-gray-400">{podiumData[0].formatted_revenue}</p>
-                </div>
-                <div className="w-full bg-gradient-to-b from-gray-300 to-gray-500 rounded-t-lg h-32 md:h-48 relative flex items-center justify-center shadow-[0_0_20px_rgba(192,192,192,0.3)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(192,192,192,0.5)]">
-                  <span className="text-4xl md:text-5xl font-bold text-gray-800 opacity-50">2</span>
-                  <div className="absolute bottom-4 left-0 right-0 text-center px-2">
-                     <p className="text-xs md:text-sm font-bold text-gray-900 truncate">{podiumData[0].genre}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 1st Place */}
-             {podiumData[1] && (
-              <div className="flex flex-col items-center w-1/3 group -mt-8">
-                <div className="mb-2 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 transform -translate-y-2">
-                   <p className="font-bold text-yellow-400 text-xl">{podiumData[1].genre}</p>
-                   <p className="text-sm text-gray-400">{podiumData[1].formatted_revenue}</p>
-                </div>
-                <div className="w-full bg-gradient-to-b from-yellow-300 to-yellow-600 rounded-t-lg h-40 md:h-64 relative flex items-center justify-center shadow-[0_0_30px_rgba(255,215,0,0.4)] transition-all duration-300 hover:shadow-[0_0_50px_rgba(255,215,0,0.6)] border-t-2 border-yellow-200">
-                  <div className="absolute -top-6 text-3xl">👑</div>
-                  <span className="text-5xl md:text-7xl font-bold text-yellow-800 opacity-50">1</span>
-                  <div className="absolute bottom-6 left-0 right-0 text-center px-2">
-                     <p className="text-sm md:text-base font-bold text-yellow-900 truncate">{podiumData[1].genre}</p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 3rd Place */}
-            {podiumData[2] && (
-              <div className="flex flex-col items-center w-1/3 group">
-                <div className="mb-2 text-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                   <p className="font-bold text-orange-400 text-lg">{podiumData[2].genre}</p>
-                   <p className="text-sm text-gray-400">{podiumData[2].formatted_revenue}</p>
-                </div>
-                <div className="w-full bg-gradient-to-b from-orange-400 to-amber-700 rounded-t-lg h-24 md:h-36 relative flex items-center justify-center shadow-[0_0_20px_rgba(205,127,50,0.3)] transition-all duration-300 hover:shadow-[0_0_30px_rgba(205,127,50,0.5)]">
-                  <span className="text-4xl md:text-5xl font-bold text-orange-900 opacity-50">3</span>
-                  <div className="absolute bottom-4 left-0 right-0 text-center px-2">
-                     <p className="text-xs md:text-sm font-bold text-amber-900 truncate">{podiumData[2].genre}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Performance Leaders (ROI by Genre) */}
+        <div className="glass rounded-3xl p-8 group">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <Award className="text-primary" size={20} /> Performance Leaders
+            </h2>
+            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-black">ROI x GENRE</div>
           </div>
-        )}
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={overallData.sort((a, b) => b.avg_roi - a.avg_roi).slice(0, 8)}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                <XAxis
+                  dataKey="genre"
+                  stroke="#525252"
+                  fontSize={10}
+                  tickLine={false}
+                  axisLine={false}
+                />
+                <YAxis stroke="#525252" fontSize={10} tickLine={false} axisLine={false} />
+                <Tooltip
+                  cursor={{ fill: 'rgba(255,255,255,0.02)' }}
+                  contentStyle={{ background: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                />
+                <Bar dataKey="avg_roi" radius={[4, 4, 0, 0]}>
+                  {overallData.sort((a, b) => b.avg_roi - a.avg_roi).slice(0, 8).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.8} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Market Share (Movies per Genre) */}
+        <div className="glass rounded-3xl p-8 group">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+              <PieIcon className="text-emerald-400" size={20} /> Market Share
+            </h2>
+            <div className="text-[10px] text-gray-500 uppercase tracking-widest font-black">Volume Distribution</div>
+          </div>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={overallData.sort((a, b) => b.total_movies - a.total_movies).slice(0, 6)}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
+                  dataKey="total_movies"
+                >
+                  {overallData.sort((a, b) => b.total_movies - a.total_movies).slice(0, 6).map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ background: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                />
+                <Legend iconType="circle" />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
-      {/* Highest Grossing Genre Per Year */}
-      <div className="glass p-6 rounded-xl">
-        <h2 className="text-xl font-bold mb-4">Highest Grossing Genre Per Year (History)</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={revenueData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey="year" stroke="#888" />
-            <YAxis stroke="#888" tickFormatter={(val) => `₹${(val/10000000).toFixed(0)}Cr`} />
-            <Tooltip content={<CustomBarTooltip />} />
-            <Legend />
-            <Bar dataKey="total_box_office" name="Total Revenue" fill="#ec4899" />
-          </BarChart>
-        </ResponsiveContainer>
+      {/* ROI Archetypes Scatter (ROI vs Volatility) */}
+      <div className="glass rounded-3xl p-8">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <TrendingUp className="text-primary" size={20} /> ROI Archetypes & Risk
+          </h2>
+          <div className="text-[10px] text-gray-500 uppercase tracking-widest font-black">ROI vs Volatility (Bubble = Vol)</div>
+        </div>
+        <div className="h-96">
+          <ResponsiveContainer width="100%" height="100%">
+            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+              <XAxis type="number" dataKey="avg_roi" name="Average ROI" unit="x" stroke="#525252" fontSize={10} axisLine={false} tickLine={false} />
+              <YAxis type="number" dataKey="roi_volatility" name="Volatility" stroke="#525252" fontSize={10} axisLine={false} tickLine={false} />
+              <ZAxis type="number" dataKey="total_movies" range={[50, 400]} name="Total Movies" />
+              <Tooltip
+                cursor={{ strokeDasharray: '3 3' }}
+                contentStyle={{ background: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+              />
+              <Scatter name="Genres" data={overallData} fill="#6366f1" fillOpacity={0.6}>
+                {overallData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Scatter>
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
-      {/* Average ROI by Genre */}
-      <div className="glass p-6 rounded-xl">
-        <h2 className="text-xl font-bold mb-4">Average ROI by Genre</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={roiData.slice(0, 15)}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis dataKey="genre" stroke="#888" angle={-45} textAnchor="end" height={100} />
-            <YAxis stroke="#888" />
-            <Tooltip contentStyle={{ backgroundColor: '#1a1a2e', border: '1px solid #333' }} />
-            <Legend />
-            <Bar dataKey="avg_roi" name="Average ROI" fill="#6366f1" />
-          </BarChart>
-        </ResponsiveContainer>
+      {/* Historical Growth Cycle (ROI over time per Genre) */}
+      <div className="glass rounded-3xl p-8">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <BarChart3 className="text-amber-400" size={20} /> Historical Growth Cycles
+          </h2>
+          <div className="text-[10px] text-gray-500 uppercase tracking-widest font-black">ROI Evolution</div>
+        </div>
+        <div className="h-96">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={Array.from(new Set(yearlyData.map(d => d.year))).sort().map(year => {
+                const yearPoint: any = { year };
+                overallData.sort((a, b) => b.total_movies - a.total_movies).slice(0, 5).forEach(g => {
+                  const stats = yearlyData.find(d => d.year === year && d.genre === g.genre);
+                  yearPoint[g.genre] = stats ? stats.avg_roi : 0;
+                });
+                return yearPoint;
+              })}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+              <XAxis dataKey="year" stroke="#525252" fontSize={10} axisLine={false} tickLine={false} />
+              <YAxis stroke="#525252" fontSize={10} axisLine={false} tickLine={false} />
+              <Tooltip
+                contentStyle={{ background: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+              />
+              <Legend iconType="circle" />
+              {overallData.sort((a, b) => b.total_movies - a.total_movies).slice(0, 5).map((g, i) => (
+                <Line
+                  key={g.genre}
+                  type="monotone"
+                  dataKey={g.genre}
+                  stroke={COLORS[i % COLORS.length]}
+                  strokeWidth={3}
+                  dot={false}
+                  activeDot={{ r: 6, stroke: 'white', strokeWidth: 2 }}
+                />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
       </div>
     </div>
   );
