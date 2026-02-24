@@ -358,17 +358,23 @@ class MLService:
             
             hit_prob = prob_dict.get('Hit', 0)
             
-            # Expected ROI calculation
+            # Expected Return: investment * avg_roi
             similar_movies = self.find_similar_movies_for_simulator(genre, budget)
             avg_roi = np.mean([m['roi'] for m in similar_movies]) if similar_movies else 0
+            expected_return = budget * avg_roi
             
-            # Risk score logic
-            risk_score = 100 - hit_prob
+            # Risk score: roi_volatility (from overall stats if possible, or similar movies)
+            genre_stats = self.data_service.genre_overall_stats[self.data_service.genre_overall_stats['genre'] == genre]
+            if not genre_stats.empty:
+                roi_volatility = genre_stats.iloc[0]['roi_volatility']
+            else:
+                roi_volatility = np.std([m['roi'] for m in similar_movies]) if len(similar_movies) > 1 else 0.5
             
             return {
                 'success_probability': hit_prob,
                 'expected_roi': round(avg_roi, 2),
-                'risk_score': round(risk_score, 2),
+                'expected_return': round(expected_return, 2),
+                'risk_score': round(roi_volatility, 2),
                 'similar_movies': similar_movies[:5]
             }
         except Exception as e:

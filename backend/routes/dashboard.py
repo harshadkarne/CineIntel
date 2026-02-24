@@ -3,13 +3,28 @@ from typing import Optional
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
-# Data service will be injected
+# Dashboard service will be injected
+dashboard_service = None
 data_service = None
 
 
 def set_data_service(ds):
     global data_service
     data_service = ds
+
+
+def set_dashboard_service(dbs):
+    global dashboard_service
+    dashboard_service = dbs
+
+
+@router.get("/metrics")
+async def get_dashboard_metrics():
+    """Get dynamic dashboard metrics"""
+    try:
+        return dashboard_service.get_dashboard_metrics()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/summary")
@@ -62,5 +77,14 @@ async def get_top_performers(limit: int = 12):
     """Get top performing movies"""
     try:
         return data_service.get_top_performing_movies(limit)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/capital-allocation")
+async def get_capital_allocation(risk_intensity: float = 0.5):
+    """Get capital allocation strategy based on risk intensity"""
+    try:
+        return data_service.get_capital_allocation_strategy(risk_intensity)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

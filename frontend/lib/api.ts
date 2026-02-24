@@ -10,6 +10,12 @@ export const api = {
     return res.json();
   },
 
+  async getDashboardMetrics() {
+    const res = await fetch(`${API_BASE_URL}/api/dashboard/metrics`);
+    if (!res.ok) throw new Error('Failed to fetch dashboard metrics');
+    return res.json();
+  },
+
   async getAIRecommendation() {
     const res = await fetch(`${API_BASE_URL}/api/dashboard/ai-recommendation`);
     if (!res.ok) throw new Error('Failed to fetch AI recommendation');
@@ -122,13 +128,13 @@ export const api = {
   },
 
   // Prediction endpoint
-  async predictInvestment(data: { genre: string, budget: number, runtime: number, release_month: number }) {
+  async predictInvestment(data: { genres: string[], budget: number, runtime: number, release_month: number }) {
     const res = await fetch(`${API_BASE_URL}/api/predict/simulator`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error('Failed to compute success vector');
+    if (!res.ok) throw new Error('Simulation failed');
     return res.json();
   },
 
@@ -175,8 +181,8 @@ export const api = {
     return res.json();
   },
 
-  async getCapitalAllocation() {
-    const res = await fetch(`${API_BASE_URL}/api/dashboard/capital-allocation`);
+  async getCapitalAllocation(riskIntensity: number = 0.5) {
+    const res = await fetch(`${API_BASE_URL}/api/dashboard/capital-allocation?risk_intensity=${riskIntensity}`);
     if (!res.ok) throw new Error('Failed to fetch capital allocation');
     return res.json();
   },
@@ -207,6 +213,8 @@ export const api = {
     success_label?: string;
     sort_by?: string;
     sort_order?: string;
+    budget_tier?: string;
+    risk_level?: string;
   }) {
     const query = new URLSearchParams();
     if (params.page) query.append('page', params.page.toString());
@@ -216,9 +224,17 @@ export const api = {
     if (params.success_label) query.append('success_label', params.success_label);
     if (params.sort_by) query.append('sort_by', params.sort_by);
     if (params.sort_order) query.append('sort_order', params.sort_order);
+    if (params.budget_tier) query.append('budget_tier', params.budget_tier);
+    if (params.risk_level) query.append('risk_level', params.risk_level);
 
     const res = await fetch(`${API_BASE_URL}/api/movies/explore?${query}`);
     if (!res.ok) throw new Error('Failed to fetch movies');
+    return res.json();
+  },
+
+  async getDiscoveryData() {
+    const res = await fetch(`${API_BASE_URL}/api/movies/discovery`);
+    if (!res.ok) throw new Error('Failed to fetch discovery data');
     return res.json();
   },
 
@@ -227,6 +243,10 @@ export const api = {
       `${API_BASE_URL}/api/genre/benchmark?genre_a=${encodeURIComponent(genreA)}&genre_b=${encodeURIComponent(genreB)}`
     );
     if (!res.ok) throw new Error('Failed to fetch benchmark data');
+  },
+  async getGenreComparison(genreA: string, genreB: string) {
+    const res = await fetch(`${API_BASE_URL}/api/genre/compare?genre_a=${genreA}&genre_b=${genreB}`);
+    if (!res.ok) throw new Error('Failed to fetch genre comparison');
     return res.json();
   }
 };

@@ -1,14 +1,18 @@
-from fastapi import FastAPI
+from fastapi import FastAPI # Re-trigger reload
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from services.data_service import DataService
 from services.ml_service import MLService
+from services.dashboard_service import DashboardService
+from services.simulation_service import SimulationService
 from routes import dashboard, genre, risk, combinations, predict, movies
 
 # Global services
 data_service = None
 ml_service = None
+dashboard_service = None
+simulation_service = None
 
 
 @asynccontextmanager
@@ -21,16 +25,22 @@ async def lifespan(app: FastAPI):
     # Load data
     data_service = DataService()
     
+    # Dashboard service
+    dashboard_service = DashboardService(data_service)
+    simulation_service = SimulationService(data_service)
+    
     # Train ML model
     ml_service = MLService(data_service)
     
     # Inject services into routes
     dashboard.set_data_service(data_service)
+    dashboard.set_dashboard_service(dashboard_service)
     genre.set_data_service(data_service)
     risk.set_data_service(data_service)
     combinations.set_data_service(data_service)
     movies.set_data_service(data_service)
     predict.set_ml_service(ml_service)
+    predict.set_simulation_service(simulation_service)
     
     print("✅ CineIntel Backend Ready!")
     
@@ -122,11 +132,17 @@ async def get_strategic_insight():
     return data_service.get_strategic_insight()
 
 @app.get("/api/dashboard/capital-allocation")
-async def get_capital_allocation():
+async def get_capital_allocation(risk_intensity: float = 0.5):
     """Get capital allocation strategy"""
     if not data_service:
         return {"error": "Data Service not initialized"}
-    return data_service.get_capital_allocation_strategy()
+    return data_service.get_capital_allocation_strategy(risk_intensity)
+
+@app.get("/api/genre/compare")
+async def get_genre_comparison(genre_a: str, genre_b: str):
+    if not data_service:
+        return {"error": "Data Service not initialized"}
+    return data_service.get_benchmark_data(genre_a, genre_b)
 
 @app.post("/api/report/export")
 async def export_report(data: dict):

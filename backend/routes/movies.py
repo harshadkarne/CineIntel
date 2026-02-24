@@ -18,7 +18,9 @@ async def explore_movies(
     genre: Optional[str] = None,
     success_label: Optional[str] = None,
     sort_by: str = "roi",
-    sort_order: str = "desc"
+    sort_order: str = "desc",
+    budget_tier: Optional[str] = None,
+    risk_level: Optional[str] = None
 ):
     """Explore movies with filtering, searching, and pagination"""
     try:
@@ -31,7 +33,20 @@ async def explore_movies(
             genre=genre,
             success_label=success_label,
             sort_by=sort_by,
-            sort_order=sort_order
+            sort_order=sort_order,
+            budget_tier=budget_tier,
+            risk_level=risk_level
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/discovery")
+async def get_discovery_engine_data():
+    """Get smart rows and carousels for the discovery engine"""
+    try:
+        if not data_service:
+            raise HTTPException(status_code=500, detail="Data Service not initialized")
+        return data_service.get_discovery_data()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+

@@ -1,6 +1,14 @@
 import { AlertTriangle, Database, Info, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
 
 export default function Banner() {
+    const [metrics, setMetrics] = useState<any>(null);
+
+    useEffect(() => {
+        api.getDashboardMetrics().then(setMetrics).catch(console.error);
+    }, []);
+
     return (
         <div className="w-full bg-black/40 border-b border-white/5 backdrop-blur-xl sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-6 py-2.5 flex items-center justify-between">
@@ -10,9 +18,9 @@ export default function Banner() {
                         <span className="text-[10px] font-black text-primary uppercase tracking-widest">Scope</span>
                     </div>
                     <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
-                        <span className="text-white">196 Bollywood Films</span>
+                        <span className="text-white">{metrics?.total_movies || "..."} Bollywood Films</span>
                         <span className="opacity-20">/</span>
-                        <span>2001–2019</span>
+                        <span>{metrics?.year_range || "..."}</span>
                         <span className="opacity-20">/</span>
                         <span className="flex items-center gap-1"><Sparkles size={10} className="text-secondary" /> TMDb Verified</span>
                     </div>

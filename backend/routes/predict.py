@@ -1,15 +1,22 @@
 from fastapi import APIRouter, HTTPException
+from typing import List
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/api/predict", tags=["predict"])
 
-# ML service will be injected
+# Services will be injected
 ml_service = None
+simulation_service = None
 
 
 def set_ml_service(ms):
     global ml_service
     ml_service = ms
+
+
+def set_simulation_service(ss):
+    global simulation_service
+    simulation_service = ss
 
 
 class PredictionRequest(BaseModel):
@@ -37,7 +44,7 @@ async def predict_movie_success(request: PredictionRequest):
 
 
 class SimulatorRequest(BaseModel):
-    genre: str
+    genres: List[str]
     budget: float
     runtime: int
     release_month: int
@@ -45,11 +52,11 @@ class SimulatorRequest(BaseModel):
 
 @router.post("/simulator")
 async def predict_simulator(request: SimulatorRequest):
-    """Data-driven simulator prediction"""
+    """Data-driven producer-focused simulation"""
     try:
-        result = ml_service.predict_simulator(
-            genre=request.genre,
-            budget=request.budget,
+        result = simulation_service.simulate(
+            genres=request.genres,
+            user_budget_cr=request.budget,
             runtime=request.runtime,
             release_month=request.release_month
         )
