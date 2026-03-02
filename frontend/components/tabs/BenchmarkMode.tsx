@@ -59,11 +59,11 @@ export default function BenchmarkMode() {
     };
 
     const radarData = data ? [
-        { subject: 'ROI Peak', A: data.genre_a.norm_roi_peak * 100, B: data.genre_b.norm_roi_peak * 100, fullMark: 100, desc: "Best performing local ROI historically" },
-        { subject: 'Success Yield', A: data.genre_a.norm_success_yield * 100, B: data.genre_b.norm_success_yield * 100, fullMark: 100, desc: "Likelihood of exceeding break-even" },
-        { subject: 'Stability', A: data.genre_a.norm_stability * 100, B: data.genre_b.norm_stability * 100, fullMark: 100, desc: "Consistency of returns (low variance)" },
-        { subject: 'Market Cap', A: data.genre_a.norm_market_cap * 100, B: data.genre_b.norm_market_cap * 100, fullMark: 100, desc: "Total box office revenue contribution" },
-        { subject: 'Momentum', A: data.genre_a.norm_momentum * 100, B: data.genre_b.norm_momentum * 100, fullMark: 100, desc: "Relative growth in the last 5 years" },
+        { subject: 'ROI Peak', A: (data.genre_a.norm_roi_peak || 0) * 100, B: (data.genre_b.norm_roi_peak || 0) * 100, fullMark: 100, desc: "Best performing local ROI historically" },
+        { subject: 'Success Yield', A: (data.genre_a.norm_success_yield || 0) * 100, B: (data.genre_b.norm_success_yield || 0) * 100, fullMark: 100, desc: "Likelihood of exceeding break-even" },
+        { subject: 'Stability', A: (data.genre_a.norm_stability || 0) * 100, B: (data.genre_b.norm_stability || 0) * 100, fullMark: 100, desc: "Consistency of returns (low variance)" },
+        { subject: 'Market Cap', A: (data.genre_a.norm_market_cap || 0) * 100, B: (data.genre_b.norm_market_cap || 0) * 100, fullMark: 100, desc: "Total box office revenue contribution" },
+        { subject: 'Momentum', A: (data.genre_a.norm_momentum || 0) * 100, B: (data.genre_b.norm_momentum || 0) * 100, fullMark: 100, desc: "Relative growth in the last 5 years" },
     ] : [];
 
     if (loading && !data) {

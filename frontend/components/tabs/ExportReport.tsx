@@ -15,22 +15,23 @@ import {
     Zap,
     ArrowRight
 } from "lucide-react";
+import { downloadBlob } from "@/lib/utils";
 
 export default function ExportReport() {
     const [loading, setLoading] = useState(false);
     const [downloaded, setDownloaded] = useState(false);
 
-    const handleExport = async () => {
+    const handleExport = async (format: 'pdf' | 'json' = 'pdf') => {
         setLoading(true);
+        setDownloaded(false);
         try {
-            await api.exportReport();
-            // Simulate small delay for UX
-            setTimeout(() => {
-                setLoading(false);
-                setDownloaded(true);
-            }, 1800);
+            const blob = await api.exportReport(format);
+            const filename = `CineIntel_Report_${new Date().toISOString().split('T')[0]}.${format}`;
+            downloadBlob(blob, filename);
+            setDownloaded(true);
         } catch (e) {
             console.error(e);
+        } finally {
             setLoading(false);
         }
     };
@@ -64,12 +65,12 @@ export default function ExportReport() {
 
                     <div className="pt-4 mt-auto">
                         <button
-                            onClick={handleExport}
+                            onClick={() => handleExport('pdf')}
                             disabled={loading}
-                            className="w-full bg-white/5 hover:bg-white/10 border border-white/10 py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all text-gray-300 uppercase tracking-widest text-xs"
+                            className={`w-full py-5 rounded-2xl font-black flex items-center justify-center gap-3 transition-all uppercase tracking-widest text-xs ${downloaded ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300'}`}
                         >
-                            {loading ? <Loader2 className="animate-spin text-primary" size={20} /> : downloaded ? <CheckCircle2 className="text-emerald-500" size={20} /> : <Download size={20} />}
-                            {downloaded ? "Dossier Ready" : "Generate Summary"}
+                            {loading ? <Loader2 className="animate-spin text-primary" size={20} /> : downloaded ? <CheckCircle2 size={20} /> : <FileDown size={20} />}
+                            {loading ? "Synthesizing PDF..." : downloaded ? "Dossier Exported" : "Generate Summary (PDF)"}
                         </button>
                     </div>
                 </div>
@@ -94,12 +95,12 @@ export default function ExportReport() {
 
                     <div className="relative z-10 pt-4 mt-auto">
                         <button
-                            onClick={handleExport}
+                            onClick={() => handleExport('json')}
                             disabled={loading}
-                            className="w-full bg-primary hover:bg-primary/90 py-5 rounded-2xl font-black uppercase tracking-widest text-xs text-white shadow-2xl shadow-primary/40 transition-all flex items-center justify-center gap-3 active:scale-95"
+                            className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs shadow-2xl transition-all flex items-center justify-center gap-3 active:scale-95 ${downloaded ? 'bg-emerald-500 text-white' : 'bg-primary text-white shadow-primary/40'}`}
                         >
-                            {loading ? <Loader2 className="animate-spin" size={22} /> : downloaded ? <CheckCircle2 size={22} /> : <Share2 size={22} />}
-                            {downloaded ? "Slate Delivered" : "Export Full Slate"}
+                            {loading ? <Loader2 className="animate-spin" size={22} /> : downloaded ? <CheckCircle2 size={22} /> : <FileDown size={22} />}
+                            {loading ? "Compiling Assets..." : downloaded ? "JSON Delivered" : "Export Full Slate (JSON)"}
                         </button>
                     </div>
                 </div>
@@ -120,8 +121,8 @@ export default function ExportReport() {
                     <div className="flex justify-between items-center mb-12">
                         <div className="h-8 bg-white/10 rounded-full w-48" />
                         <div className="flex gap-2">
-                            <div className="w-10 h-1bg-white/5 rounded" />
-                            <div className="w-10 h-1bg-white/5 rounded" />
+                            <div className="w-10 h-1 bg-white/5 rounded" />
+                            <div className="w-10 h-1 bg-white/5 rounded" />
                         </div>
                     </div>
 

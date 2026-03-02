@@ -34,8 +34,8 @@
     @apply bg-[#030303] text-foreground font-sans antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
     background-image:
-      radial-gradient(circle at 50% -20%, rgba(99, 102, 241, 0.15), transparent 40%),
-      radial-gradient(circle at 0% 100%, rgba(236, 72, 153, 0.05), transparent 30%);
+      radial-gradient(circle at 50% -20%, rgba(99,102,241,0.15), transparent 40%),
+      radial-gradient(circle at 0% 100%, rgba(236,72,153,0.05), transparent 30%);
     background-attachment: fixed;
   }
 }
@@ -54,12 +54,12 @@
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(99, 102, 241, 0.3);
+    background-color: rgba(99,102,241,0.3);
     border-radius: 10px;
   }
 
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(99, 102, 241, 0.5);
+    background-color: rgba(99,102,241,0.5);
   }
 
   .glass {
@@ -99,12 +99,12 @@
   }
 
   .card-gradient {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+    background: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.01) 100%);
   }
 
   .hero-mesh {
-    background: radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0, transparent 50%),
-      radial-gradient(at 100% 0%, rgba(236, 72, 153, 0.1) 0, transparent 50%);
+    background: radial-gradient(at 0% 0%, rgba(99,102,241,0.15) 0, transparent 50%),
+      radial-gradient(at 100% 0%, rgba(236,72,153,0.1) 0, transparent 50%);
   }
 }
 
@@ -119,15 +119,47 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255,255,255,0.1);
   border-radius: 10px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.4);
+  background: rgba(99,102,241,0.4);
 }
 
 /* Smooth Transitions */
 .page-transition {
   @apply animate-fade-in;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98) translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.4s ease-out forwards;
+}
+
+.animate-fade-scale {
+  animation: fadeScaleIn 0.2s ease-out forwards;
 }

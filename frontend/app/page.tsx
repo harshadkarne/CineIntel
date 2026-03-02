@@ -45,7 +45,7 @@ export default function Home() {
     <div className="flex min-h-screen bg-background font-sans">
       <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
 
-      <main className="flex-1 ml-64 flex flex-col min-h-screen">
+      <main className="flex-1 ml-64 flex flex-col h-screen overflow-y-auto">
         <Banner />
 
         <div className="flex-1 p-8">

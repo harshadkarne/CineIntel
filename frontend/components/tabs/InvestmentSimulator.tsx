@@ -9,8 +9,10 @@ import {
 import {
   Calculator, AlertTriangle, Zap, Info, TrendingUp, Clock,
   LayoutDashboard, Activity, ShieldCheck, Calendar, Check,
-  ChevronDown, X, Sparkles, Target, Landmark, ArrowRight, TrendingDown, Plus, Minus
+  Target, Landmark, ArrowRight, TrendingDown, Plus, Minus,
+  ChevronDown, X, Sparkles
 } from "lucide-react";
+import { formatROI, formatCurrencyCr } from "@/lib/utils";
 
 const MONTHS = [
   "January", "February", "March", "April", "May", "June",
@@ -26,6 +28,7 @@ export default function InvestmentSimulator() {
     releaseMonth: 12,
   });
   const [prediction, setPrediction] = useState<any>(null);
+  const [prevPrediction, setPrevPrediction] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showGenreSearch, setShowGenreSearch] = useState(false);
@@ -55,20 +58,31 @@ export default function InvestmentSimulator() {
     });
   };
 
+  // Phase 6 Reset Mode: If user changes any input, clear prediction
+  useEffect(() => {
+    if (prediction !== null) {
+      setPrevPrediction(prediction);
+      setPrediction(null);
+    }
+  }, [plan]);
+
   const handlePredict = async () => {
     if (plan.runtime < 60 || plan.runtime > 240) {
       setError("Runtime must be between 60 and 240 minutes.");
       return;
     }
-    if (plan.budget < 0.5 || plan.budget > 1500) {
+    if (plan.budget < 0.5 || (plan.budget > 1500 && plan.budget !== 0)) {
+      // Allow temporary 0 during typing
       setError("Budget must be between ₹0.5 Cr and ₹1500 Cr.");
       return;
     }
 
     setLoading(true);
-    setPrediction(null);
     setError(null);
     try {
+      // Phase 2: Show 1.5–2 second loading animation artificially
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
       const result = await api.predictInvestment({
         genres: plan.genres,
         budget: plan.budget,
@@ -87,7 +101,7 @@ export default function InvestmentSimulator() {
   const ScoreGauge = ({ value }: { value: number }) => {
     const circumference = 2 * Math.PI * 54;
     const offset = circumference - (value / 100) * circumference;
-    const color = value > 75 ? "#10b981" : value > 50 ? "#6366f1" : value > 30 ? "#f59e0b" : "#ef4444";
+    const color = value > 75 ? "#10b981" : value > 50 ? "#f59e0b" : "#ef4444"; // Green Safe, Yellow Moderate, Red Risk
 
     return (
       <div className="relative w-40 h-40">
@@ -199,9 +213,14 @@ export default function InvestmentSimulator() {
                   </label>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {plan.genres.map(g => (
-                      <span key={g} className="bg-primary/20 text-primary text-[10px] font-bold px-2 py-1 rounded-lg border border-primary/30 flex items-center gap-1">
-                        {g} <X size={10} className="cursor-pointer" onClick={() => toggleGenre(g)} />
-                      </span>
+                      <button
+                        key={g}
+                        onClick={() => toggleGenre(g)}
+                        className="bg-primary/20 text-primary text-[10px] font-black px-2 py-1 rounded-lg border border-primary/30 flex items-center gap-1 hover:bg-rose-500/20 hover:text-rose-400 hover:border-rose-500/30 transition-all group"
+                        title="Click to remove"
+                      >
+                        {g} <X size={10} className="group-hover:scale-125 transition-transform" />
+                      </button>
                     ))}
                   </div>
                   <div className="relative z-[60]">
@@ -273,9 +292,11 @@ export default function InvestmentSimulator() {
                       min="0.5"
                       max="1500"
                       onChange={(e) => {
-                        const val = e.target.value;
-                        if (val === "") setPlan({ ...plan, budget: 0 });
-                        else setPlan({ ...plan, budget: parseFloat(val) });
+                        let val = e.target.value;
+                        // Sanitize: remove leading zeros and non-numeric except decimal
+                        const sanitized = val.replace(/^0+(?!\.|$)/, '').replace(/[^\d.]/g, '');
+                        if (sanitized === "") setPlan({ ...plan, budget: 0 });
+                        else setPlan({ ...plan, budget: parseFloat(sanitized) || 0 });
                       }}
                       className={`w-full bg-white/[0.03] border ${plan.budget > 500 ? 'border-amber-500/50' : 'border-white/10'} rounded-xl px-4 py-3 text-white focus:ring-1 focus:ring-primary outline-none text-sm transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
                       placeholder="0.5"
@@ -306,9 +327,17 @@ export default function InvestmentSimulator() {
                     <label className="text-[10px] text-gray-500 font-black uppercase flex items-center gap-1.5">
                       <Clock size={10} /> Runtime Constraint
                     </label>
-                    <span className={`text-xs font-bold ${plan.runtime < 90 || plan.runtime > 210 ? 'text-rose-400' : 'text-white'}`}>
-                      {plan.runtime} Mins
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded border ${plan.runtime >= 120 && plan.runtime <= 150 ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' :
+                        plan.runtime > 150 ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' :
+                          'border-rose-500/30 text-rose-400 bg-rose-500/10'
+                        }`}>
+                        {plan.runtime >= 120 && plan.runtime <= 150 ? 'Optimal' : plan.runtime > 150 ? 'Slightly Long' : 'Slightly Short'}
+                      </span>
+                      <span className={`text-xs font-bold ${plan.runtime < 90 || plan.runtime > 210 ? 'text-rose-400' : 'text-white'}`}>
+                        {plan.runtime} Mins
+                      </span>
+                    </div>
                   </div>
                   <input
                     type="range"
@@ -356,57 +385,80 @@ export default function InvestmentSimulator() {
         {/* Output Column */}
         <div className="lg:col-span-8">
           {loading ? (
-            <div className="glass rounded-3xl h-[650px] p-12 overflow-hidden relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent -translate-x-full animate-[shimmer_2s_infinite]" />
+            <div className="glass rounded-3xl h-[650px] p-12 overflow-hidden relative border border-primary/20 bg-black/40">
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+
+              {/* Animated Grid Background */}
+              <div className="absolute inset-0 opacity-10"
+                style={{
+                  backgroundImage: 'linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px)',
+                  backgroundSize: '40px 40px'
+                }}
+              ></div>
+
               <div className="h-full flex flex-col items-center justify-center text-center relative z-10">
-                <div className="relative mb-8">
-                  <div className="w-32 h-32 border-2 border-primary/10 border-t-primary rounded-full animate-spin"></div>
-                  <Activity className="absolute inset-0 m-auto text-primary animate-pulse" size={40} />
+                <div className="relative mb-10 w-40 h-40">
+                  {/* Pulsing Calculation Rings */}
+                  <div className="absolute inset-0 border-4 border-primary/20 rounded-full animate-ping" />
+                  <div className="absolute inset-2 border-4 border-t-primary border-r-transparent border-b-secondary border-l-transparent rounded-full animate-[spin_2s_linear_infinite]" />
+                  <div className="absolute inset-6 border-4 border-t-secondary border-r-transparent border-b-primary border-l-transparent rounded-full animate-[spin_3s_linear_infinite_reverse]" />
+                  <Activity className="absolute inset-0 m-auto text-primary animate-pulse" size={48} strokeWidth={1.5} />
                 </div>
-                <h3 className="text-2xl font-black text-white mb-2 uppercase italic tracking-tighter">AI SUCCESS PROJECTION</h3>
-                <p className="text-gray-500 text-sm max-w-sm">Benchmarking your budget against historical {plan.genres.join(' + ')} performers...</p>
-                <div className="mt-8 flex gap-2">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.3s]" />
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:-0.15s]" />
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" />
+                <h3 className="text-2xl font-black text-white mb-3 uppercase tracking-[0.2em] font-mono">Running Monte Carlo Analysis</h3>
+                <p className="text-primary/70 text-sm font-medium tracking-wide animate-pulse">Simulating 10,000 production scenarios...</p>
+
+                <div className="mt-12 w-64 h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary w-full animate-[shimmer_1.5s_ease-in-out_infinite]" style={{ transformOrigin: 'left', scale: '0 1', animationName: 'progress' }} />
                 </div>
               </div>
             </div>
-          ) : prediction ? (
-            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
+          ) : !prediction ? (
+            // Phase 1: Pre-Simulation State ("Awaiting Simulation")
+            <div className="glass rounded-3xl h-[650px] p-12 overflow-hidden relative flex flex-col items-center justify-center text-center border-dashed border-2 border-white/5 bg-black/20">
+              <div className="p-6 bg-white/[0.02] rounded-full mb-6 relative group">
+                <div className="absolute inset-0 border border-white/10 rounded-full scale-110 group-hover:scale-125 transition-transform duration-700"></div>
+                <LayoutDashboard className="text-gray-600 group-hover:text-primary transition-colors duration-500" size={48} strokeWidth={1} />
+              </div>
+              <h3 className="text-2xl font-black text-gray-400 mb-3 uppercase tracking-widest font-mono">Awaiting Simulation</h3>
+              <p className="text-gray-600 text-sm font-medium max-w-sm leading-relaxed">
+                Configure your production parameters and click "Run Production Simulation" to generate institutional-grade greenlight analysis.
+              </p>
+            </div>
+          ) : (
+            // Phase 4: Animated Reveal
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 fill-mode-both">
 
               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 {/* Score Panel */}
-                <div className="md:col-span-4 glass-card p-8 flex flex-col items-center justify-center">
+                <div className="md:col-span-4 glass-card p-8 flex flex-col items-center justify-center animate-in zoom-in-95 duration-700 delay-100 fill-mode-both">
                   <ScoreGauge value={prediction.greenlight_score} />
-                  <div className={`mt-4 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${prediction.greenlight_score > 70 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                    prediction.greenlight_score > 40 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                  <div className={`mt-4 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${prediction.greenlight_score > 75 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                    prediction.greenlight_score > 50 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
                       'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                     }`}>
-                    {prediction.greenlight_score > 75 ? 'Optimal Investment' :
-                      prediction.greenlight_score > 50 ? 'Strong Feasibility' :
-                        prediction.greenlight_score > 30 ? 'Risk Caution' : 'Critical Budget Risk'}
+                    {prediction.greenlight_score > 75 ? 'Safe Investment' :
+                      prediction.greenlight_score > 50 ? 'Moderate Feasibility' : 'High Risk Profile'}
                   </div>
                 </div>
 
                 {/* Probability Distribution */}
-                <div className="md:col-span-8 glass-card p-8">
+                <div className="md:col-span-8 glass-card p-8 animate-in slide-in-from-right-8 duration-700 delay-300 fill-mode-both">
                   <div className="flex items-center justify-between mb-6">
                     <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
                       <Target size={14} className="text-primary" /> Success Probability
                     </h3>
-                    {prediction.confidence_score && (
+                    {prediction.confidence_score !== undefined && (
                       <div className="flex items-center gap-2 px-3 py-1 bg-white/[0.03] rounded-full border border-white/5">
                         <span className="text-[8px] text-gray-500 font-black uppercase">Data Confidence</span>
                         <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
-                          <div className="h-full bg-primary" style={{ width: `${prediction.confidence_score}%` }} />
+                          <div className="h-full bg-primary transition-all duration-1000 delay-500" style={{ width: `${prediction.confidence_score}%` }} />
                         </div>
                         <span className="text-[10px] text-white font-bold">{prediction.confidence_score}%</span>
                       </div>
                     )}
                   </div>
                   <div className="grid grid-cols-3 gap-6">
-                    {['hit', 'average', 'flop'].map(type => (
+                    {['hit', 'average', 'flop'].map((type, idx) => (
                       <div key={type} className="space-y-2">
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] text-gray-500 font-bold uppercase">{type}</span>
@@ -414,7 +466,7 @@ export default function InvestmentSimulator() {
                         </div>
                         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                           <div
-                            className={`h-full transition-all duration-1000 ${type === 'hit' ? 'bg-emerald-500' : type === 'average' ? 'bg-amber-500' : 'bg-rose-500'
+                            className={`h-full transition-all duration-1000 delay-${700 + (idx * 150)} ${type === 'hit' ? 'bg-emerald-500' : type === 'average' ? 'bg-amber-500' : 'bg-rose-500'
                               }`}
                             style={{ width: `${prediction.probabilities[type]}%` }}
                           />
@@ -424,19 +476,19 @@ export default function InvestmentSimulator() {
                   </div>
 
                   <div className="mt-8 grid grid-cols-2 gap-4">
-                    <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl flex items-center justify-between">
+                    <div className="glow-card p-4 rounded-2xl flex items-center justify-between h-full bg-white/[0.03] animate-in zoom-in-95 duration-500 delay-500 fill-mode-both">
                       <div>
-                        <p className="text-[9px] text-gray-500 font-black uppercase mb-1">Expected ROI</p>
-                        <p className="text-2xl font-black text-white">{prediction.financials.expected_roi}x</p>
+                        <p className="text-[9px] text-gray-500 font-black uppercase mb-1 flex items-center gap-1 italic">Expected ROI</p>
+                        <p className="text-2xl font-black text-white">{formatROI(prediction?.financials?.expected_roi)}</p>
                       </div>
                       <div className="p-2 bg-emerald-500/10 rounded-lg">
                         <TrendingUp size={20} className="text-emerald-400" />
                       </div>
                     </div>
-                    <div className="bg-white/[0.02] border border-white/5 p-4 rounded-2xl flex items-center justify-between group relative">
+                    <div className="glow-card p-4 rounded-2xl flex items-center justify-between group relative h-full bg-white/[0.03] animate-in zoom-in-95 duration-500 delay-700 fill-mode-both">
                       <div className="flex-1">
                         <div className="flex items-center gap-1.5 mb-1">
-                          <p className="text-[9px] text-gray-500 font-black uppercase">Break-Even @ {prediction.financials.break_even_multiplier}x</p>
+                          <p className="text-[9px] text-gray-500 font-black uppercase italic">Break-Even @ {prediction?.financials?.break_even_multiplier}x</p>
                           <div className="group/tip relative cursor-help">
                             <ShieldCheck size={10} className="text-gray-600" />
                             <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-black/90 border border-white/10 rounded-lg text-[8px] text-gray-400 opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 pointer-events-none">
@@ -444,8 +496,8 @@ export default function InvestmentSimulator() {
                             </div>
                           </div>
                         </div>
-                        <p className="text-2xl font-black text-amber-400">₹{(prediction.financials.break_even / 10000000).toFixed(1)}Cr</p>
-                        <p className="text-[8px] text-gray-600 mt-1 italic font-medium">Budget + Marketing & Distribution costs</p>
+                        <p className="text-2xl font-black text-amber-400">{formatCurrencyCr(prediction?.financials?.break_even)}</p>
+                        <p className="text-[8px] text-gray-600 mt-1 italic font-medium uppercase tracking-tighter">Budget (₹{plan.budget} Cr) × {prediction?.financials?.break_even_multiplier || 1.5}x Threshold</p>
                       </div>
                       <div className="p-2 bg-amber-500/10 rounded-lg shrink-0">
                         <Landmark size={20} className="text-amber-400" />
@@ -456,7 +508,7 @@ export default function InvestmentSimulator() {
               </div>
 
               {/* Budget Intelligence Visualization */}
-              <div className="glass-card p-8">
+              <div className="glass-card p-8 animate-in slide-in-from-bottom-8 duration-700 delay-500 fill-mode-both">
                 <div className="flex items-center justify-between mb-8">
                   <h3 className="text-xs font-black text-white uppercase tracking-widest flex items-center gap-2">
                     <Landmark size={14} className="text-primary" /> Budget Intelligence Analysis
@@ -476,21 +528,21 @@ export default function InvestmentSimulator() {
                 <BudgetPercentileBar percentile={prediction.budget_intelligence.percentile} />
 
                 <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div className="space-y-4">
+                  <div className="space-y-4 animate-in slide-in-from-left-4 duration-500 delay-700 fill-mode-both">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-primary/10 rounded-xl"><Zap size={16} className="text-primary" /></div>
                       <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Budget risk classification</h4>
                     </div>
                     <div className="flex items-center gap-3 bg-white/[0.02] p-4 rounded-2xl border border-white/5">
-                      <div className={`w-3 h-3 rounded-full animate-pulse ${prediction.budget_intelligence.risk_level === 'Low' ? 'bg-emerald-500' :
-                        prediction.budget_intelligence.risk_level === 'Moderate' ? 'bg-amber-500' : 'bg-rose-500'
+                      <div className={`w-3 h-3 rounded-full animate-pulse ${prediction.budget_intelligence.risk_level === 'Low' ? 'bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]' :
+                        prediction.budget_intelligence.risk_level === 'Moderate' ? 'bg-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.5)]' : 'bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]'
                         }`} />
                       <span className="text-sm font-black text-white uppercase italic">{prediction.budget_intelligence.risk_level} Risk Profile</span>
                       <ArrowRight size={12} className="text-gray-600 ml-auto" />
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-4 animate-in slide-in-from-right-4 duration-500 delay-700 fill-mode-both">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-secondary/10 rounded-xl"><Target size={16} className="text-secondary" /></div>
                       <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Hit-Based production range</h4>
@@ -501,12 +553,14 @@ export default function InvestmentSimulator() {
                     </div>
                   </div>
                 </div>
-                <BudgetOptimizationTip intelligence={prediction.budget_intelligence} />
+                <div className="animate-in fade-in duration-500 delay-1000 fill-mode-both">
+                  <BudgetOptimizationTip intelligence={prediction.budget_intelligence} />
+                </div>
               </div>
 
               {/* Optimization Insights */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="glass-card p-6 border-t-2 border-primary/40 group hover:bg-white/[0.02] transition-colors">
+                <div className="glass-card p-6 border-t-2 border-primary/40 group hover:bg-white/[0.02] transition-colors animate-in slide-in-from-bottom-4 duration-500 delay-700 fill-mode-both">
                   <div className="flex items-center gap-2 mb-4">
                     <Calendar size={18} className="text-primary" />
                     <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Market Timing</h4>
@@ -515,7 +569,7 @@ export default function InvestmentSimulator() {
                   <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">Historically higher market appetite for selected genres during this window.</p>
                 </div>
 
-                <div className="glass-card p-6 border-t-2 border-secondary/40 group hover:bg-white/[0.02] transition-colors relative">
+                <div className="glass-card p-6 border-t-2 border-secondary/40 group hover:bg-white/[0.02] transition-colors relative animate-in slide-in-from-bottom-4 duration-500 delay-[850ms] fill-mode-both">
                   <div className="flex items-center gap-2 mb-4">
                     <Clock size={18} className="text-secondary" />
                     <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Runtime Precision</h4>
@@ -533,7 +587,7 @@ export default function InvestmentSimulator() {
                   <p className="text-[10px] text-gray-500 mt-2 leading-relaxed italic">Hit median for this cluster is {prediction.recommendations.recommended_runtime}m.</p>
                 </div>
 
-                <div className="glass-card p-6 border-t-2 border-amber-500/40 group hover:bg-white/[0.02] transition-colors">
+                <div className="glass-card p-6 border-t-2 border-amber-500/40 group hover:bg-white/[0.02] transition-colors animate-in slide-in-from-bottom-4 duration-500 delay-1000 fill-mode-both">
                   <div className="flex items-center gap-2 mb-4">
                     <ShieldCheck size={18} className="text-amber-500" />
                     <h4 className="text-[10px] font-black text-white uppercase tracking-widest">Volatility Check</h4>
@@ -554,7 +608,7 @@ export default function InvestmentSimulator() {
 
               {/* Genre Performance Insight Panel */}
               {prediction.genre_insights && prediction.genre_insights.length > 0 && (
-                <div className="glass rounded-3xl p-8 border border-white/5 relative overflow-hidden group">
+                <div className="glass rounded-3xl p-8 border border-white/5 relative overflow-hidden group animate-in slide-in-from-bottom-8 duration-700 delay-1000 fill-mode-both">
                   <div className="flex items-center justify-between mb-8">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
                       <TrendingUp className="text-emerald-400" size={20} /> Genre Intelligence Panel
@@ -661,9 +715,9 @@ export default function InvestmentSimulator() {
                       <div className="mb-4">
                         <div className="flex justify-between items-start mb-2">
                           <p className="text-xs font-black text-white uppercase italic leading-tight max-w-[70%]">{movie.title}</p>
-                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${movie.success_label === 'Hit' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                            movie.success_label === 'Average' ? 'bg-amber-500/10 text-amber-400 border border-amber-500/10' :
-                              'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border-t-2 ${movie.success_label === 'Hit' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                            movie.success_label === 'Average' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                              'bg-rose-500/10 text-rose-400 border-rose-500/30'
                             }`}>
                             {movie.success_label}
                           </span>
@@ -687,20 +741,6 @@ export default function InvestmentSimulator() {
                     <p className="text-sm text-gray-500 col-span-full py-8 text-center italic">No direct budget proxies found for this specific runtime/genre cluster mapping.</p>
                   )}
                 </div>
-              </div>
-
-            </div>
-          ) : (
-            <div className="glass h-[650px] rounded-3xl flex flex-col items-center justify-center text-center p-20 group">
-              <div className="w-24 h-24 bg-white/[0.02] rounded-full flex items-center justify-center mb-10 border border-white/10 transition-transform group-hover:scale-110 duration-500 shadow-inner">
-                <Calculator className="text-gray-600 group-hover:text-primary transition-colors" size={48} />
-              </div>
-              <h3 className="text-2xl font-black text-white mb-4 uppercase tracking-[0.2em] animate-pulse">Engine Standby</h3>
-              <p className="text-gray-500 max-w-sm text-sm leading-relaxed">Adjust your production budget and genre components to initialize the precision greenlight manifold.</p>
-              <div className="mt-12 flex flex-wrap justify-center gap-6 text-[10px] font-black text-gray-600 uppercase tracking-widest">
-                <span className="flex items-center gap-2 group-hover:text-primary transition-colors"><ShieldCheck size={12} /> Model V4.5 Precise</span>
-                <span className="flex items-center gap-2 group-hover:text-primary transition-colors"><Landmark size={12} /> ₹ Numeric Logic</span>
-                <span className="flex items-center gap-2 group-hover:text-primary transition-colors"><Sparkles size={12} /> AI Advisor Active</span>
               </div>
             </div>
           )}

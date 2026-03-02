@@ -7,6 +7,7 @@ import {
   ResponsiveContainer, ScatterChart, Scatter, ZAxis, Cell, ReferenceLine
 } from "recharts";
 import { AlertTriangle, ShieldCheck, Zap, Info, TrendingUp, BarChart3, Search, Filter, PieChart, Briefcase, ChevronRight, Activity, Percent } from "lucide-react";
+import { formatROI, formatVolatility, formatPercent } from "@/lib/utils";
 
 const COLORS = ['#6366f1', '#ec4899', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16'];
 
@@ -53,11 +54,11 @@ export default function FinancialRisk() {
   const getRiskBadge = (category: string) => {
     switch (category) {
       case 'SAFE':
-        return <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase"><ShieldCheck size={10} /> Safe</span>;
+        return <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-black uppercase tracking-tighter"><ShieldCheck size={10} /> Safe</span>;
       case 'MODERATE':
-        return <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 text-[10px] font-bold uppercase"><Zap size={10} /> Moderate</span>;
+        return <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-black uppercase tracking-tighter"><Zap size={10} /> Moderate</span>;
       case 'HIGH RISK':
-        return <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20 text-[10px] font-bold uppercase"><AlertTriangle size={10} /> High Risk</span>;
+        return <span className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-black uppercase tracking-tighter"><AlertTriangle size={10} /> High Risk</span>;
       default:
         return <span className="px-2 py-0.5 rounded bg-gray-500/10 text-gray-400 border border-gray-500/20 text-[10px] font-bold uppercase">{category}</span>;
     }
@@ -96,13 +97,14 @@ export default function FinancialRisk() {
   );
 
   // Portfolio Summary Logic
-  const coreStable = riskData.filter(d => d.risk_category === 'SAFE').slice(0, 3);
-  const growthOpp = riskData.filter(d => d.momentum > 15 && d.risk_category !== 'HIGH RISK').slice(0, 3);
-  const speculative = riskData.filter(d => d.archetype === 'Blockbuster-driven' || d.archetype === 'Lottery genre').slice(0, 3);
+  const coreStable = riskData?.filter(d => d && d.risk_category === 'SAFE').slice(0, 3) || [];
+  const growthOpp = riskData?.filter(d => d && (d.momentum || 0) > 15 && d.risk_category !== 'HIGH RISK').slice(0, 3) || [];
+  const speculative = riskData?.filter(d => d && (d.archetype === 'Blockbuster-driven' || d.archetype === 'Lottery genre')).slice(0, 3) || [];
 
   // Constants for medians (simple average for now)
-  const medianROI = riskData.length ? riskData.reduce((acc, curr) => acc + curr.avg_roi, 0) / riskData.length : 1.0;
-  const medianVol = riskData.length ? riskData.reduce((acc, curr) => acc + curr.roi_volatility, 0) / riskData.length : 2.0;
+  const validRiskData = riskData?.filter(d => d && typeof d.avg_roi === 'number') || [];
+  const medianROI = validRiskData.length ? validRiskData.reduce((acc, curr) => acc + (curr.avg_roi || 0), 0) / validRiskData.length : 1.0;
+  const medianVol = validRiskData.length ? validRiskData.reduce((acc, curr) => acc + (curr.roi_volatility || 0), 0) / validRiskData.length : 2.0;
 
   return (
     <div className="space-y-8 page-transition pb-20 p-4">
@@ -124,9 +126,9 @@ export default function FinancialRisk() {
           </p>
           <div className="space-y-2">
             {coreStable.map(d => (
-              <div key={d.genre} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg">
-                <span className="text-xs font-bold text-white">{d.genre}</span>
-                <span className="text-[10px] text-emerald-400 font-bold">{d.avg_roi}x</span>
+              <div key={d.genre || Math.random()} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg">
+                <span className="text-xs font-bold text-white">{d.genre || "N/A"}</span>
+                <span className="text-[10px] text-emerald-400 font-bold">{formatROI(d.avg_roi)}</span>
               </div>
             ))}
             {!coreStable.length && <p className="text-[10px] text-gray-500 italic">No low-risk anchors identified.</p>}
@@ -142,9 +144,9 @@ export default function FinancialRisk() {
           </p>
           <div className="space-y-2">
             {growthOpp.map(d => (
-              <div key={d.genre} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg">
-                <span className="text-xs font-bold text-white">{d.genre}</span>
-                <span className="text-[10px] text-primary font-bold">+{d.momentum}%</span>
+              <div key={d.genre || Math.random()} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg">
+                <span className="text-xs font-bold text-white">{d.genre || "N/A"}</span>
+                <span className="text-[10px] text-primary font-bold">+{formatPercent(d.momentum)}</span>
               </div>
             ))}
             {!growthOpp.length && <p className="text-[10px] text-gray-500 italic">Market velocity is currently stable.</p>}
@@ -156,15 +158,16 @@ export default function FinancialRisk() {
             <Zap size={48} className="text-amber-400" />
           </div>
           <p className="text-[10px] text-gray-500 uppercase font-black mb-3 flex items-center gap-2">
-            <Percent size={12} /> Speculative
+            <Briefcase size={12} /> Speculative
           </p>
           <div className="space-y-2">
             {speculative.map(d => (
-              <div key={d.genre} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg">
-                <span className="text-xs font-bold text-white">{d.genre}</span>
+              <div key={d.genre || Math.random()} className="flex justify-between items-center bg-white/5 px-3 py-2 rounded-lg">
+                <span className="text-xs font-bold text-white">{d.genre || "N/A"}</span>
                 <span className="text-[10px] text-amber-400 font-bold">High Yield</span>
               </div>
             ))}
+            {!speculative.length && <p className="text-[10px] text-gray-500 italic">Market volatility is currently stable.</p>}
           </div>
         </div>
 
@@ -206,10 +209,10 @@ export default function FinancialRisk() {
                         <div className="bg-black/95 p-4 rounded-xl border border-white/10 shadow-2xl">
                           <p className="text-white font-bold text-sm mb-2">{d.genre}</p>
                           <div className="space-y-1.5 border-t border-white/5 pt-2">
-                            <p className="text-[10px] text-gray-400 flex justify-between gap-8">Volatility Weight (0.4) <span>{((d.normalized_volatility || 0) * 0.4).toFixed(2)}</span></p>
-                            <p className="text-[10px] text-gray-400 flex justify-between gap-8">Downside Weight (0.3) <span>{((d.downside_risk || 0) * 0.3).toFixed(2)}</span></p>
-                            <p className="text-[10px] text-gray-400 flex justify-between gap-8">Failure Weight (0.3) <span>{(((d.failure_rate || 0) / 100) * 0.3).toFixed(2)}</span></p>
-                            <p className="text-sm font-black text-rose-400 flex justify-between gap-8 mt-2 pt-2 border-t border-white/5">Risk Score <span>{d.risk_score || 0}</span></p>
+                            <p className="text-[10px] text-gray-400 flex justify-between gap-8">Volatility Weight (0.4) <span>{((d.normalized_volatility || 0) * 0.4).toFixed(3)}</span></p>
+                            <p className="text-[10px] text-gray-400 flex justify-between gap-8">Downside Weight (0.3) <span>{((d.downside_risk || 0) * 0.3).toFixed(3)}</span></p>
+                            <p className="text-[10px] text-gray-400 flex justify-between gap-8">Failure Weight (0.3) <span>{(((d.failure_rate || 0) / 100) * 0.3).toFixed(3)}</span></p>
+                            <p className="text-sm font-black text-rose-400 flex justify-between gap-8 mt-2 pt-2 border-t border-white/5">Risk Score <span>{(d.risk_score || 0).toFixed(3)}</span></p>
                           </div>
                         </div>
                       );
@@ -229,12 +232,6 @@ export default function FinancialRisk() {
 
         {/* Efficiency Frontier Plot with Quad Shading */}
         <div className="glass rounded-3xl p-8 relative overflow-hidden">
-          <div className="absolute inset-x-8 inset-y-16 opacity-5 pointer-events-none grid grid-cols-2 grid-rows-2">
-            <div className="bg-emerald-500 border-r border-b border-white/10" />
-            <div className="bg-amber-500 border-b border-white/10" />
-            <div className="bg-rose-500 border-r border-white/10" />
-            <div className="bg-blue-500" />
-          </div>
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <Activity className="text-primary" size={20} /> Efficiency Frontier
@@ -245,43 +242,71 @@ export default function FinancialRisk() {
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis type="number" dataKey="avg_roi" name="Average ROI" stroke="#525252" fontSize={10} axisLine={false} tickLine={false} label={{ value: 'Avg ROI', position: 'insideBottom', offset: -5, fill: '#525252', fontSize: 10 }} />
-                <YAxis type="number" dataKey="roi_volatility" name="Volatility" stroke="#525252" fontSize={10} axisLine={false} tickLine={false} label={{ value: 'ROI Volatility (σ)', angle: -90, position: 'insideLeft', fill: '#525252', fontSize: 10 }} />
+                <XAxis
+                  type="number"
+                  dataKey="avg_roi"
+                  name="Average ROI"
+                  domain={[0, 5]}
+                  stroke="#525252"
+                  fontSize={10}
+                  axisLine={false}
+                  tickLine={false}
+                  label={{ value: 'Performance (Avg ROI)', position: 'insideBottom', offset: -5, fill: '#525252', fontSize: 10, fontWeight: 'bold' }}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="roi_volatility"
+                  name="Volatility"
+                  domain={[0, 10]}
+                  stroke="#525252"
+                  fontSize={10}
+                  axisLine={false}
+                  tickLine={false}
+                  label={{ value: 'Risk (ROI Volatility σ)', angle: -90, position: 'insideLeft', fill: '#525252', fontSize: 10, fontWeight: 'bold' }}
+                />
                 <ZAxis type="number" dataKey="total_movies" range={[50, 400]} name="Volume" />
-                <ReferenceLine x={medianROI} stroke="#6366f1" strokeDasharray="5 5" strokeOpacity={0.3} label={{ value: 'Median ROI', position: 'top', fill: '#6366f1', fontSize: 8 }} />
-                <ReferenceLine y={medianVol} stroke="#f59e0b" strokeDasharray="5 5" strokeOpacity={0.3} label={{ value: 'Median Vol', position: 'right', fill: '#f59e0b', fontSize: 8 }} />
+
+                {/* Reference Lines for Median Context */}
+                <ReferenceLine x={medianROI} stroke="#6366f1" strokeDasharray="5 5" strokeOpacity={0.3} label={{ value: 'Median ROI', position: 'top', fill: '#6366f1', fontSize: 8, opacity: 0.5 }} />
+                <ReferenceLine y={medianVol} stroke="#f59e0b" strokeDasharray="5 5" strokeOpacity={0.3} label={{ value: 'Median Vol', position: 'right', fill: '#f59e0b', fontSize: 8, opacity: 0.5 }} />
+
                 <Tooltip
                   cursor={{ strokeDasharray: '3 3' }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const d = payload[0].payload as RiskData;
                       return (
-                        <div className="bg-black/95 p-4 rounded-xl border border-white/10 shadow-2xl max-w-xs">
+                        <div className="bg-black/95 p-4 rounded-xl border border-white/10 shadow-2xl max-w-xs backdrop-blur-xl">
                           <p className="text-white font-bold text-sm mb-1">{d.genre}</p>
-                          <div className={`text-[8px] font-black px-1.5 py-0.5 rounded border mb-3 inline-block ${getArchetypeColor(d.archetype)} bg-white/5 border-white/10 uppercase`}>{d.archetype}</div>
+                          <div className={`text-[8px] font-black px-1.5 py-0.5 rounded border mb-3 inline-block uppercase tracking-tighter ${getArchetypeColor(d.archetype)} bg-white/5 border-white/10`}>
+                            {d.archetype}
+                          </div>
                           <div className="space-y-2 border-t border-white/5 pt-2">
                             <div className="flex justify-between gap-4">
                               <span className="text-[10px] text-gray-500 uppercase font-black">ROI Stability</span>
-                              <span className="text-[10px] text-white font-bold">{d.roi_volatility < 1.5 ? 'Very Stable' : d.roi_volatility < 4 ? 'Moderate' : 'Extreme Risk'}</span>
+                              <span className={`text-[10px] font-bold ${d.roi_volatility < 1.5 ? 'text-emerald-400' : d.roi_volatility < 4 ? 'text-amber-400' : 'text-rose-400'}`}>
+                                {d.roi_volatility < 1.5 ? 'Very Stable' : d.roi_volatility < 4 ? 'Moderate' : 'High Volatility'}
+                              </span>
                             </div>
                             <div className="flex justify-between gap-4">
-                              <span className="text-[10px] text-gray-500 uppercase font-black">Sample Size</span>
-                              <span className="text-[10px] text-white font-bold">{d.total_movies} Films</span>
+                              <span className="text-[10px] text-gray-500 uppercase font-black">Avg Performance</span>
+                              <span className="text-[10px] text-white font-bold">{formatROI(d.avg_roi)}</span>
                             </div>
                             <div className="flex justify-between gap-4">
-                              <span className="text-[10px] text-gray-500 uppercase font-black">Success %</span>
-                              <span className="text-[10px] text-emerald-400 font-black">{(100 - (d.failure_rate || 0)).toFixed(0)}%</span>
+                              <span className="text-[10px] text-gray-500 uppercase font-black">Success Rate</span>
+                              <span className="text-[10px] text-emerald-400 font-black">{formatPercent(100 - (d.failure_rate || 0))}</span>
                             </div>
                           </div>
+                          <p className="text-[8px] text-gray-400 mt-2 font-medium italic">Universe: {d.total_movies} Cinematic Data Points</p>
                         </div>
                       );
                     }
                     return null;
                   }}
                 />
-                <Scatter name="Genres" data={riskData}>
-                  {riskData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.7} />
+                <Scatter name="Genres" data={riskData.filter(d => d.avg_roi < 10 && d.roi_volatility < 20)}>
+                  {riskData.filter(d => d.avg_roi < 10 && d.roi_volatility < 20).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.7} strokeWidth={1} stroke="rgba(255,255,255,0.2)" />
                   ))}
                 </Scatter>
               </ScatterChart>
@@ -317,10 +342,12 @@ export default function FinancialRisk() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {[...riskData].sort((a, b) => b.total_movies - a.total_movies).slice(0, 15).map((row) => (
-                <tr key={row.genre} className="hover:bg-white/[0.02] transition-colors group">
+              {[...riskData].sort((a, b) => (b.total_movies || 0) - (a.total_movies || 0)).slice(0, 15).map((row) => (
+                <tr key={row.genre || Math.random()} className="hover:bg-white/[0.02] transition-colors group">
                   <td className="px-6 py-4 text-center">
-                    <span className={`text-[9px] font-black uppercase tracking-widest ${getArchetypeColor(row.archetype)}`}>{row.archetype.split('-')[0]}</span>
+                    <span className={`text-[9px] font-black uppercase tracking-widest ${getArchetypeColor(row.archetype || "")}`}>
+                      {row.archetype ? row.archetype.split('-')[0] : "N/A"}
+                    </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
@@ -331,16 +358,16 @@ export default function FinancialRisk() {
                   <td className="px-6 py-4 text-center">
                     <div className="flex flex-col items-center gap-1">
                       <div className="w-20 h-1 bg-gray-800 rounded-full overflow-hidden">
-                        <div className="h-full bg-rose-500/50" style={{ width: `${row.failure_rate || 0}%` }} />
+                        <div className="h-full bg-rose-500/50" style={{ width: `${Math.min(100, row.failure_rate || 0)}%` }} />
                       </div>
-                      <span className="text-xs font-bold text-rose-400/80">{(row.failure_rate || 0).toFixed(1)}%</span>
+                      <span className="text-xs font-bold text-rose-400/80">{formatPercent(row.failure_rate)}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-center font-bold text-secondary text-sm">
-                    {(row.avg_roi || 0).toFixed(2)}x
+                    {formatROI(row.avg_roi)}
                   </td>
                   <td className="px-6 py-4 text-center text-sm text-gray-400 font-mono">
-                    σ {(row.roi_volatility || 0).toFixed(2)}
+                    {formatVolatility(row.roi_volatility)}
                   </td>
                   <td className="px-6 py-4 text-center space-y-2">
                     <div className="flex justify-center">{getRiskBadge(row.risk_category)}</div>

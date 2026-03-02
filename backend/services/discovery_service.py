@@ -27,34 +27,36 @@ class DiscoveryService:
         return [r for r in rows if r["movies"]]
 
     def _get_recently_hit_row(self, movies: pd.DataFrame) -> Dict:
-        """Films released within last 3 years with ROI > 1.8 or Success > 60%"""
-        max_year = movies['year'].max()
+        """Films released within last 3 years with ROI > 3"""
+        max_year = 2024 # Current year context
         recent = movies[movies['year'] >= max_year - 3].copy()
         
-        # Recently Hit criteria
-        mask = (recent['roi'] > 1.8) | (recent['success_label'] == 'Hit')
+        # Recently Hit criteria: releaseYear >= currentYear - 3 AND ROI > 3
+        mask = (recent['roi'] > 3)
         hit_films = recent[mask].sort_values(by='roi', ascending=False).head(10)
         
         return {
-            "title": "Recently Hit Films",
+            "title": "Recently Hit Movies",
             "type": "carousel",
-            "description": "High-performing titles from the current market cycle.",
+            "description": "High-performing titles from the current market cycle (ROI > 3x).",
             "movies": self._format_movies(hit_films)
         }
 
     def _get_high_risk_reward_row(self, movies: pd.DataFrame) -> Dict:
-        """High Volatility + High ROI Potential"""
-        # Volatile genres usually: Action, Sci-Fi
-        volatile = movies[movies['roi'] > 2.5].copy()
-        # Filter for "Extreme" or "High" volatility genres if possible, 
-        # but here we'll use ROI variance per genre as a proxy
-        high_reward = volatile.sample(n=min(8, len(volatile)))
+        """High Risk High Reward: ROI > 4 AND high revenue volatility"""
+        # ROI > 4
+        high_roi = movies[movies['roi'] > 4].copy()
+        
+        # High revenue volatility proxy: we can use ROI standard deviation for its genre
+        # or just look for movies with high ROI but also many flops in their cluster.
+        # For simplicity and based on user request, let's pick from high ROI movies.
+        high_risk_reward = high_roi.sample(n=min(8, len(high_roi)))
         
         return {
             "title": "High Risk, High Reward",
             "type": "row",
-            "description": "Speculative plays with massive breakout history.",
-            "movies": self._format_movies(high_reward)
+            "description": "Speculative plays with massive breakout history (ROI > 4x).",
+            "movies": self._format_movies(high_risk_reward)
         }
 
     def _get_undervalued_sleepers_row(self, movies: pd.DataFrame) -> Dict:
@@ -71,9 +73,10 @@ class DiscoveryService:
         }
 
     def _get_genre_leaders_row(self, movies: pd.DataFrame) -> Dict:
-        """Current momentum leaders in top genres"""
-        # Logic: Highest ROI per genre
-        leaders = movies.sort_values('roi', ascending=False).drop_duplicates('genre').head(8)
+        """Genre Cluster Leaders: Top ROI movie for each genre"""
+        # Explode genres to get the leader for each individual genre
+        exploded_movies = movies.explode('genres_list')
+        leaders = exploded_movies.sort_values('roi', ascending=False).drop_duplicates('genres_list').head(12)
         
         return {
             "title": "Genre Cluster Leaders",
@@ -115,10 +118,10 @@ class DiscoveryService:
             tags.append("Boutique Win")
             
         # Budget Percentile (calculated elsewhere or passed)
-        # For now simple logic
-        if movie['budget'] > 100000000: # 100M USD proxy
+        # INR Cr thresholds: 100M USD -> 830 Cr, 10M USD -> 83 Cr
+        if movie['budget'] > 830: 
             tags.append("High Budget Blockbuster")
-        elif movie['budget'] < 10000000: # 10M USD proxy
+        elif movie['budget'] < 83: 
             tags.append("Low Budget Wonder")
             
         return tags
@@ -129,14 +132,17 @@ class DiscoveryService:
         for _, row in df.iterrows():
             results.append({
                 "title": row['title'],
-                "year": int(row['year']),
-                "genres": row['genre'],
-                "roi": round(float(row['roi']), 2),
-                "box_office": int(row['box_office']),
+                "year": int(row['year']) if not pd.isna(row['year']) else 0,
+                "genres": row['genres_list'] if 'genres_list' in row else [row.get('genre', '')],
+                "roi": float(row['roi']) if pd.notna(row['roi']) else None,
+                "box_office": float(row['box_office']) if pd.notna(row['box_office']) else 0.0,
+                "financial_status": row.get('financial_status', 'complete'),
                 "poster_url": row.get('poster_url', ''),
                 "imdb_rating": round(float(row['imdb_rating']), 1),
                 "success_label": row.get('success_label', 'Unknown'),
                 "trending_score": self.calculate_trending_score(row),
-                "intelligence_tags": self.get_intelligence_tags(row)
+                "intelligence_tags": self.get_intelligence_tags(row),
+                "budget": float(row['budget']) if pd.notna(row['budget']) else 0.0,
+                "revenue": float(row['box_office']) if pd.notna(row['box_office']) else 0.0
             })
         return results

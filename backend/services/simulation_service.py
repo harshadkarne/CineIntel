@@ -222,33 +222,36 @@ class SimulationService:
                 m['budget_cr'] = round(m['budget'] / 10000000, 1)
 
         return {
-            "greenlight_score": int(final_score),
-            "confidence_score": min(int((sample_size / 50) * 100), 100),
-            "probabilities": probs,
+            "greenlight_score": int(final_score) if not np.isnan(final_score) else 50,
+            "confidence_score": min(int((sample_size / 50) * 100), 100) if not np.isnan(sample_size) else 0,
+            "probabilities": {k: (v if not np.isnan(v) else 33.3) for k, v in probs.items()},
             "financials": {
-                "expected_roi": float(round(blended_roi, 2)),
+                "expected_roi": float(round(blended_roi, 2)) if not np.isnan(blended_roi) else 0.0,
                 "break_even": float(round(user_budget * (1.4 if user_percentile < 40 else 1.7 if user_percentile > 75 else 1.5), 2)),
                 "break_even_multiplier": float(1.4 if user_percentile < 40 else 1.7 if user_percentile > 75 else 1.5),
                 "user_budget_cr": float(user_budget_cr)
             },
             "budget_intelligence": {
                 "risk_level": budget_risk,
-                "percentile": float(user_percentile),
-                "median": float(round(blended_hit_median / 1e7, 1)),
-                "hit_range": [float(round(blended_hit_p25 / 1e7, 1)), float(round(blended_hit_p75 / 1e7, 1))],
-                "suggested_range": f"₹{round(blended_hit_p25/1e7,1)} Cr – ₹{round(blended_hit_p75/1e7,1)} Cr",
-                "volatility": float(round(blended_volatility, 2)),
+                "percentile": float(user_percentile) if not np.isnan(user_percentile) else 0.0,
+                "median": float(round(blended_hit_median / 1e7, 1)) if not np.isnan(blended_hit_median) else 0.0,
+                "hit_range": [
+                    float(round(blended_hit_p25 / 1e7, 1)) if not np.isnan(blended_hit_p25) else 0.0, 
+                    float(round(blended_hit_p75 / 1e7, 1)) if not np.isnan(blended_hit_p75) else 0.0
+                ],
+                "suggested_range": f"₹{round(blended_hit_p25/1e7,1) if not np.isnan(blended_hit_p25) else 0} Cr – ₹{round(blended_hit_p75/1e7,1) if not np.isnan(blended_hit_p75) else 0} Cr",
+                "volatility": float(round(blended_volatility, 2)) if not np.isnan(blended_volatility) else 0.0,
                 "volatility_label": volatility_label,
                 "show_volatility_warning": bool(show_volatility_warning)
             },
             "recommendations": {
-                "best_month": int(best_month),
-                "recommended_runtime": int(blended_runtime),
-                "runtime_deviation": int(rt_diff),
+                "best_month": int(best_month) if not np.isnan(best_month) else 12,
+                "recommended_runtime": int(blended_runtime) if not np.isnan(blended_runtime) else 135,
+                "runtime_deviation": int(rt_diff) if not np.isnan(rt_diff) else 0,
                 "runtime_risk": runtime_risk,
                 "advisor_guidance": advisor_insights
             },
-            "similar_movies": similar_movies
+            "similar_movies": similar_movies if similar_movies else []
         }
 
 

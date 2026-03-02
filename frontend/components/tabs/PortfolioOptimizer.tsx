@@ -10,6 +10,7 @@ import {
     Target, Users, ChevronRight, BarChart3, PieChart as PieChartIcon,
     Layers, Percent, Scale
 } from "lucide-react";
+import { formatROI, formatPercent, formatVolatility } from "@/lib/utils";
 import { api } from "@/lib/api";
 
 interface AllocationItem {
@@ -102,9 +103,9 @@ export default function PortfolioOptimizer() {
                 <div className="lg:col-span-1 glass p-6 rounded-3xl space-y-6">
                     <div className="flex items-center justify-between">
                         <h3 className="text-sm font-black text-gray-500 uppercase tracking-widest">Risk Appetite</h3>
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${data?.strategy === 'Conservative' ? "bg-emerald-500/10 text-emerald-400" :
-                                data?.strategy === 'Balanced' ? "bg-blue-500/10 text-blue-400" :
-                                    "bg-rose-500/10 text-rose-400"
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${data?.strategy === 'Conservative' ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" :
+                            data?.strategy === 'Balanced' ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
+                                "bg-rose-500/10 text-rose-400 border border-rose-500/20"
                             }`}>
                             {data?.strategy}
                         </span>
@@ -140,25 +141,25 @@ export default function PortfolioOptimizer() {
 
                 {/* Score Cards */}
                 <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="glass p-6 rounded-3xl flex flex-col items-center justify-center text-center group hover:bg-white/[0.02] transition-colors">
+                    <div className="glow-card p-6 rounded-3xl flex flex-col items-center justify-center text-center group hover:bg-white/[0.02] transition-colors h-full">
                         <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Expected ROI</p>
-                        <p className="text-3xl font-black text-emerald-400 group-hover:scale-110 transition-transform">{metrics.expected_roi}x</p>
-                        <p className="text-[8px] text-emerald-500/50 font-bold mt-1">Weighted Mean</p>
+                        <p className="text-3xl font-black text-white group-hover:scale-110 transition-transform">{formatROI(metrics.expected_roi)}</p>
+                        <p className="text-[8px] text-gray-400 font-bold mt-1">Weighted Mean</p>
                     </div>
-                    <div className="glass p-6 rounded-3xl flex flex-col items-center justify-center text-center group hover:bg-white/[0.02] transition-colors">
+                    <div className="glow-card p-6 rounded-3xl flex flex-col items-center justify-center text-center group hover:bg-white/[0.02] transition-colors h-full">
                         <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Hit Probability</p>
-                        <p className="text-3xl font-black text-primary group-hover:scale-110 transition-transform">{metrics.hit_probability}%</p>
+                        <p className="text-3xl font-black text-primary group-hover:scale-110 transition-transform">{formatPercent(metrics.hit_probability)}</p>
                         <p className="text-[8px] text-primary/50 font-bold mt-1">Efficiency Match</p>
                     </div>
-                    <div className="glass p-6 rounded-3xl flex flex-col items-center justify-center text-center group hover:bg-white/[0.02] transition-colors">
+                    <div className="glow-card p-6 rounded-3xl flex flex-col items-center justify-center text-center group hover:bg-white/[0.02] transition-colors h-full">
                         <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Volatility</p>
-                        <p className="text-3xl font-black text-rose-400 group-hover:scale-110 transition-transform">{metrics.volatility}σ</p>
+                        <p className="text-3xl font-black text-rose-400 group-hover:scale-110 transition-transform">{formatVolatility(metrics.volatility)}</p>
                         <p className="text-[8px] text-rose-500/50 font-bold mt-1">Portfolio Variance</p>
                     </div>
-                    <div className="glass p-6 rounded-3xl flex flex-col items-center justify-center text-center group hover:bg-white/[0.02] transition-colors relative overflow-hidden">
+                    <div className="glow-card p-6 rounded-3xl flex flex-col items-center justify-center text-center group hover:bg-white/[0.02] transition-colors h-full relative overflow-hidden">
                         <div className="absolute inset-0 bg-primary/5 -translate-y-full group-hover:translate-y-0 transition-transform" />
                         <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Diversification</p>
-                        <p className="text-3xl font-black text-amber-400 group-hover:scale-110 transition-transform">{metrics.diversification_score}/100</p>
+                        <p className="text-3xl font-black text-amber-400 group-hover:scale-110 transition-transform">{Math.round(metrics.diversification_score)}/100</p>
                         <div className="w-full bg-white/5 h-1 mt-3 rounded-full overflow-hidden">
                             <div className="bg-amber-400 h-full transition-all duration-1000" style={{ width: `${metrics.diversification_score}%` }} />
                         </div>
@@ -200,7 +201,7 @@ export default function PortfolioOptimizer() {
                                         if (active && payload && payload.length) {
                                             const d = payload[0].payload as AllocationItem;
                                             return (
-                                                <div className="bg-black/95 p-4 rounded-xl border border-white/10 shadow-2xl">
+                                                <div className="bg-black/95 p-4 rounded-xl border border-white/10 shadow-2xl backdrop-blur-md">
                                                     <p className="text-white font-bold text-sm mb-1">{d.genre}</p>
                                                     <p className="text-[10px] text-primary font-black uppercase">{d.archetype}</p>
                                                     <div className="mt-2 space-y-1">
@@ -210,7 +211,7 @@ export default function PortfolioOptimizer() {
                                                         </div>
                                                         <div className="flex justify-between gap-8 text-[10px] text-gray-400">
                                                             <span>Avg ROI:</span>
-                                                            <span className="text-emerald-400 font-bold">{d.roi}x</span>
+                                                            <span className="text-emerald-400 font-bold">{formatROI(d.roi)}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -256,36 +257,60 @@ export default function PortfolioOptimizer() {
 
                     <div className="h-[300px] relative z-10">
                         <ResponsiveContainer width="100%" height="100%">
-                            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 10 }}>
+                            <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 10 }}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                                 <XAxis
                                     type="number"
                                     dataKey="roi"
                                     name="ROI"
-                                    stroke="transparent"
-                                    domain={[0, 'auto']}
-                                    label={{ value: 'Expected ROI', position: 'insideBottom', offset: -5, fill: '#525252', fontSize: 10, fontWeight: 'bold' }}
+                                    stroke="#525252"
+                                    fontSize={10}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    domain={[0, 5]}
+                                    label={{ value: 'Expected ROI Multiple', position: 'insideBottom', offset: -5, fill: '#525252', fontSize: 10, fontWeight: 'bold' }}
                                 />
                                 <YAxis
                                     type="number"
                                     dataKey="volatility"
                                     name="Volatility"
-                                    stroke="transparent"
-                                    domain={[0, 'auto']}
-                                    label={{ value: 'Volatility', angle: -90, position: 'insideLeft', fill: '#525252', fontSize: 10, fontWeight: 'bold' }}
+                                    stroke="#525252"
+                                    fontSize={10}
+                                    axisLine={false}
+                                    tickLine={false}
+                                    domain={[0, 10]}
+                                    label={{ value: 'Volatility (σ)', angle: -90, position: 'insideLeft', fill: '#525252', fontSize: 10, fontWeight: 'bold' }}
                                 />
                                 <ZAxis type="number" dataKey="allocation" range={[100, 1000]} />
+
+                                {/* Quadrant Reference Lines */}
+                                <ReferenceLine x={metrics.expected_roi} stroke="#6366f1" strokeDasharray="3 3" strokeOpacity={0.3} label={{ value: 'Avg ROI', position: 'top', fill: '#6366f1', fontSize: 8, opacity: 0.5 }} />
+                                <ReferenceLine y={metrics.volatility} stroke="#6366f1" strokeDasharray="3 3" strokeOpacity={0.3} label={{ value: 'Avg Vol', position: 'right', fill: '#6366f1', fontSize: 8, opacity: 0.5 }} />
+
                                 <RechartsTooltip
                                     cursor={{ strokeDasharray: '3 3' }}
                                     content={({ active, payload }) => {
                                         if (active && payload && payload.length) {
                                             const d = payload[0].payload;
                                             return (
-                                                <div className="bg-black/95 p-3 rounded-xl border border-white/10 shadow-2xl">
-                                                    <p className="text-white font-bold text-xs">{d.genre}</p>
-                                                    <div className="mt-1 flex gap-3">
-                                                        <span className="text-[10px] text-emerald-400">{d.roi}x ROI</span>
-                                                        <span className="text-[10px] text-rose-400">{d.volatility}σ Vol</span>
+                                                <div className="bg-black/95 p-4 rounded-xl border border-white/10 shadow-2xl backdrop-blur-xl">
+                                                    <p className="text-white font-bold text-sm mb-1">{d.genre}</p>
+                                                    <div className={`text-[8px] font-black px-1.5 py-0.5 rounded border mb-3 inline-block uppercase tracking-tighter border-primary/30 text-primary bg-primary/10`}>
+                                                        {d.archetype}
+                                                    </div>
+                                                    <div className="space-y-2 border-t border-white/5 pt-2">
+                                                        <div className="flex justify-between gap-8">
+                                                            <span className="text-[10px] text-gray-500 uppercase font-black">Allocation</span>
+                                                            <span className="text-[10px] text-white font-bold">{d.allocation}%</span>
+                                                        </div>
+                                                        <div className="flex justify-between gap-8">
+                                                            <span className="text-[10px] text-gray-500 uppercase font-black">Efficiency</span>
+                                                            <span className="text-[10px] text-emerald-400 font-black">{formatROI(d.roi)} ROI</span>
+                                                        </div>
+                                                        <div className="flex justify-between gap-8">
+                                                            <span className="text-[10px] text-gray-500 uppercase font-black">Risk Profile</span>
+                                                            <span className="text-[10px] text-rose-400 font-black">{formatVolatility(d.volatility)}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             );
@@ -293,22 +318,28 @@ export default function PortfolioOptimizer() {
                                         return null;
                                     }}
                                 />
-                                <Scatter name="Portfolio" data={portfolio} fill="#6366f1">
+                                <Scatter name="Portfolio" data={portfolio}>
                                     {portfolio.map((entry, index) => (
                                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.6} stroke={COLORS[index % COLORS.length]} />
                                     ))}
                                 </Scatter>
-                                <ReferenceLine x={metrics.expected_roi} stroke="#6366f1" strokeDasharray="3 3" opacity={0.3} />
-                                <ReferenceLine y={metrics.volatility} stroke="#6366f1" strokeDasharray="3 3" opacity={0.3} />
                             </ScatterChart>
                         </ResponsiveContainer>
                     </div>
 
-                    <div className="flex justify-center gap-4 mt-4 relative z-10">
-                        <div className="text-[8px] text-emerald-400 font-bold bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10">Safe Haven</div>
-                        <div className="text-[8px] text-blue-400 font-bold bg-blue-500/5 px-2 py-1 rounded border border-blue-500/10">Growth</div>
-                        <div className="text-[8px] text-rose-400 font-bold bg-rose-500/5 px-2 py-1 rounded border border-rose-500/10">Underperformer</div>
-                        <div className="text-[8px] text-amber-400 font-bold bg-amber-500/5 px-2 py-1 rounded border border-amber-500/10">High Volatility</div>
+                    <div className="flex justify-center flex-wrap gap-4 mt-4 relative z-10">
+                        <div className="flex items-center gap-1.5 text-[8px] text-emerald-400 font-bold bg-emerald-500/5 px-2 py-1 rounded border border-emerald-500/10 uppercase tracking-tighter">
+                            <Shield size={10} /> Safe Haven
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[8px] text-blue-400 font-bold bg-blue-500/5 px-2 py-1 rounded border border-blue-500/10 uppercase tracking-tighter">
+                            <TrendingUp size={10} /> Growth
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[8px] text-rose-400 font-bold bg-rose-500/5 px-2 py-1 rounded border border-rose-500/10 uppercase tracking-tighter">
+                            <AlertTriangle size={10} /> Inefficient
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[8px] text-amber-400 font-bold bg-amber-500/5 px-2 py-1 rounded border border-amber-500/10 uppercase tracking-tighter">
+                            <Zap size={10} /> High Volatility
+                        </div>
                     </div>
                 </div>
             </div>

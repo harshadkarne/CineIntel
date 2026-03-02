@@ -187,10 +187,10 @@ export const api = {
     return res.json();
   },
 
-  async exportReport() {
-    const res = await fetch(`${API_BASE_URL}/api/report/export`);
+  async exportReport(format: 'pdf' | 'json' = 'pdf') {
+    const res = await fetch(`${API_BASE_URL}/api/report/export?format=${format}`);
     if (!res.ok) throw new Error('Failed to export report');
-    return res.json();
+    return res.blob();
   },
 
   async getMarketPulse() {

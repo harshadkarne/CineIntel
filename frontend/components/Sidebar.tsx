@@ -30,7 +30,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-64 glass border-r border-border p-6 flex flex-col z-40">
+    <aside className="fixed left-0 top-0 h-screen w-64 glass border-r border-border p-6 flex flex-col z-50">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-gradient">CineIntel</h2>
         <p className="text-xs text-gray-500 mt-1">Investment Intelligence</p>

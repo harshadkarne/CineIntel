@@ -18,7 +18,9 @@ import {
   LayoutDashboard,
   Sparkles,
   X,
+  ShieldCheck,
 } from "lucide-react";
+import { formatROI, formatVolatility, formatPercent, formatCurrencyCr } from "@/lib/utils";
 
 export default function ExecutiveDashboard() {
   const [metrics, setMetrics] = useState<any>(null);
@@ -40,6 +42,16 @@ export default function ExecutiveDashboard() {
     }
   };
 
+  const getSentiment = () => {
+    const velocity = metrics?.market_velocity || 0;
+    const volatility = metrics?.risk_index || 0;
+
+    if (velocity < 0) return { label: "Bearish", class: "text-rose-400", stage: "bearish" };
+    if (velocity > 0 && volatility > 2.0) return { label: "Cautious Bullish", class: "text-amber-400", stage: "cautious" };
+    if (velocity > 0) return { label: "Bullish", class: "text-emerald-400", stage: "bullish" };
+    return { label: "Neutral", class: "text-gray-400", stage: "neutral" };
+  };
+
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
@@ -51,6 +63,8 @@ export default function ExecutiveDashboard() {
       </div>
     );
   }
+
+  const sentiment = getSentiment();
 
   return (
     <div className="space-y-8 page-transition">
@@ -66,15 +80,12 @@ export default function ExecutiveDashboard() {
               <span className="badge risk-safe">AI Market Pulse</span>
               <span className="text-xs text-gray-500">• {metrics?.data_freshness || "Real-time"} Update</span>
               <span className="text-[9px] text-gray-500 font-bold uppercase tracking-tighter ml-auto opacity-60">
-                Analysis Scope: {metrics?.total_movies || 5235} films ({metrics?.year_range || "1950–2025"})
+                Analysis Scope: {metrics?.total_movies || 0} films ({metrics?.year_range || "2001–2019"})
               </span>
             </div>
 
             <h1 className="text-4xl font-bold text-white mb-6">
-              Market Sentiment: <span className={`${metrics?.sentiment_stage === 'expansion' || metrics?.sentiment_stage === 'bullish' ? 'text-emerald-400' :
-                  metrics?.sentiment_stage === 'cautious' ? 'text-amber-400' :
-                    metrics?.sentiment_stage === 'neutral' ? 'text-gray-400' : 'text-rose-400'
-                }`}>{metrics?.sentiment || "Neutral"}</span>
+              Market Sentiment: <span className={sentiment.class}>{sentiment.label}</span>
             </h1>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -82,13 +93,13 @@ export default function ExecutiveDashboard() {
                 <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Market Velocity</p>
                 <div className="flex flex-col">
                   <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-white">{metrics?.market_velocity || 0}%</span>
+                    <span className="text-3xl font-bold text-white">{formatPercent(metrics?.market_velocity, 1)}</span>
                     <span className={`${(metrics?.market_velocity || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'} text-xs font-bold mb-1 flex items-center gap-0.5`}>
                       <ArrowUpRight size={12} className={(metrics?.market_velocity || 0) < 0 ? 'rotate-90' : ''} />
                     </span>
                   </div>
                   <p className="text-[10px] text-gray-400 font-medium italic mt-1">
-                    {metrics?.market_velocity_label || "Stable Momentum"}
+                    {metrics?.market_velocity_label || (metrics?.market_velocity > 0 ? "Expansionary" : "Contractionary")}
                   </p>
                 </div>
                 <div className="absolute -top-12 left-0 w-48 p-2 bg-black/90 border border-white/10 rounded-lg text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
@@ -100,10 +111,12 @@ export default function ExecutiveDashboard() {
                 <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Risk Regime</p>
                 <div className="flex flex-col">
                   <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-white">{metrics?.risk_label || "Stable"}</span>
+                    <span className="text-3xl font-bold text-white">
+                      {metrics?.risk_index > 2.0 ? "High Volatility" : metrics?.risk_index > 1.0 ? "Moderate" : "Stable"}
+                    </span>
                   </div>
                   <p className="text-[10px] text-gray-400 font-medium italic mt-1 underline decoration-primary/30">
-                    Volatility: {metrics?.risk_index || 0}σ
+                    Volatility: {formatVolatility(metrics?.risk_index)}
                   </p>
                 </div>
                 <div className="absolute -top-12 left-0 w-48 p-2 bg-black/90 border border-white/10 rounded-lg text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
@@ -116,7 +129,7 @@ export default function ExecutiveDashboard() {
                 <div className="flex flex-col">
                   <div className="flex items-end gap-2">
                     <span className="text-3xl font-bold text-white truncate max-w-[150px]">
-                      {metrics?.trending_genre || "Unknown"}
+                      {metrics?.trending_genre || "—"}
                     </span>
                   </div>
                   <p className="text-[10px] text-gray-400 font-medium italic mt-1">
@@ -131,15 +144,15 @@ export default function ExecutiveDashboard() {
           </div>
         </div>
 
-        <div className="glass rounded-3xl p-8 flex flex-col justify-center bg-gradient-to-br from-primary/10 to-transparent border-primary/20">
+        <div className="glass rounded-3xl p-8 flex flex-col justify-center bg-gradient-to-br from-primary/10 to-transparent border-primary/20 h-full">
           <p className="text-xs text-gray-400 font-bold uppercase mb-2">Total Volume Analysed</p>
           <div className="text-4xl font-black text-white mb-2">
-            ₹{(metrics?.total_volume / 10000000).toFixed(1)}<span className="text-primary text-2xl">Cr</span>
+            {formatCurrencyCr(metrics?.total_volume)}
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-[10px] text-gray-500 italic">5k+ Titles Active</span>
-            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${metrics?.confidence_score === 'High' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-              {metrics?.confidence_score || "Moderate"} Confidence
+            <span className="text-[10px] text-gray-500 italic">Financial Slate Scope</span>
+            <span className={`px-2 py-0.5 rounded flex items-center gap-1 text-[9px] font-black uppercase tracking-tighter ${metrics?.confidence_score === 'High' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+              <ShieldCheck size={10} /> {metrics?.confidence_score || "Moderate"} Confidence
             </span>
           </div>
         </div>
@@ -169,13 +182,13 @@ export default function ExecutiveDashboard() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            <div className="glass-card p-4">
-              <p className="text-[10px] text-gray-500 font-bold uppercase">Top Alpha (Highest ROI)</p>
-              <p className="text-lg font-bold text-secondary">{metrics?.top_alpha}</p>
+            <div className="glass-card p-5 group transition-all hover:bg-white/[0.03]">
+              <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Top Alpha (Highest ROI)</p>
+              <p className="text-lg font-black text-amber-400 group-hover:scale-105 transition-transform">{metrics?.top_alpha}</p>
             </div>
-            <div className="glass-card p-4">
-              <p className="text-[10px] text-gray-500 font-bold uppercase">Anchor Segment (Safest)</p>
-              <p className="text-lg font-bold text-emerald-400">{metrics?.anchor_segment}</p>
+            <div className="glass-card p-5 group transition-all hover:bg-white/[0.03]">
+              <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-1">Anchor Segment (Safest)</p>
+              <p className="text-lg font-black text-emerald-400 group-hover:scale-105 transition-transform">{metrics?.anchor_segment}</p>
             </div>
           </div>
         </div>
@@ -230,27 +243,27 @@ export default function ExecutiveDashboard() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-          <div className="glass-card p-6 text-center">
-            <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Success Velocity</p>
-            <p className="text-2xl font-bold text-white">{metrics?.success_rate}%</p>
-            <p className="text-[10px] text-gray-600">Hit Efficiency</p>
+          <div className="glass-card p-6 text-center group hover:bg-white/[0.02] transition-all">
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Success Velocity</p>
+            <p className="text-2xl font-black text-white group-hover:scale-110 transition-transform">{formatPercent(metrics?.success_rate)}</p>
+            <p className="text-[9px] text-gray-600 font-bold mt-1 uppercase">Hit Efficiency</p>
           </div>
-          <div className="glass-card p-6 text-center">
-            <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Alpha Yield</p>
-            <p className="text-2xl font-bold text-primary">{metrics?.avg_roi}x</p>
-            <p className="text-[10px] text-gray-600">Avg ROI</p>
+          <div className="glass-card p-6 text-center group hover:bg-white/[0.02] transition-all">
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Alpha Yield</p>
+            <p className="text-2xl font-black text-primary group-hover:scale-110 transition-transform">{formatROI(metrics?.avg_roi)}</p>
+            <p className="text-[9px] text-gray-600 font-bold mt-1 uppercase">Avg ROI</p>
           </div>
-          <div className="glass-card p-6 text-center">
-            <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">Confidence Level</p>
-            <p className={`text-2xl font-bold ${metrics?.confidence_score === 'High' ? 'text-emerald-400' : 'text-amber-400'}`}>
+          <div className="glass-card p-6 text-center group hover:bg-white/[0.02] transition-all">
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">Confidence Level</p>
+            <p className={`text-2xl font-black group-hover:scale-110 transition-transform ${metrics?.confidence_score === 'High' ? 'text-emerald-400' : 'text-amber-400'}`}>
               {metrics?.confidence_score}
             </p>
-            <p className="text-[10px] text-gray-600">Sample Variance</p>
+            <p className="text-[9px] text-gray-600 font-bold mt-1 uppercase">Sample Variance</p>
           </div>
-          <div className="glass-card p-6 text-center">
-            <p className="text-[10px] text-gray-500 font-bold uppercase mb-2">AI Node</p>
-            <p className="text-2xl font-bold text-emerald-400">Stable</p>
-            <p className="text-[10px] text-gray-600">Computation Verified</p>
+          <div className="glass-card p-6 text-center group hover:bg-white/[0.02] transition-all">
+            <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mb-2">AI Node</p>
+            <p className="text-2xl font-black text-primary group-hover:scale-110 transition-transform">Stable</p>
+            <p className="text-[9px] text-gray-600 font-bold mt-1 uppercase">Computation Verified</p>
           </div>
         </div>
       </div>

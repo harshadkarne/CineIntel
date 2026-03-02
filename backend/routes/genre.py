@@ -92,7 +92,7 @@ async def get_year_range():
 async def get_genre_yearly():
     """Get yearly genre statistics"""
     try:
-        return data_service.load_genre_yearly()
+        return data_service.get_genre_yearly()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -101,7 +101,7 @@ async def get_genre_yearly():
 async def get_genre_overall():
     """Get overall genre statistics"""
     try:
-        return data_service.load_genre_overall()
+        return data_service.get_genre_overall()
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

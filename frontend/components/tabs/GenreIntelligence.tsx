@@ -18,9 +18,12 @@ import {
   Cell,
   ScatterChart,
   Scatter,
-  ZAxis
+  ZAxis,
+  ReferenceLine,
+  ReferenceArea
 } from "recharts";
 import { TrendingUp, Award, PieChart as PieIcon, BarChart3, Info, Download, Filter, Zap, Target, Activity, ShieldCheck, ArrowUpRight, ArrowDownRight, Minus, Star } from "lucide-react";
+import { formatROI, formatVolatility, formatPercent, formatCurrencyCr } from "@/lib/utils";
 
 const COLORS = ['#6366f1', '#ec4899', '#14b8a6', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#84cc16'];
 
@@ -138,35 +141,44 @@ export default function GenreIntelligence() {
 
       {/* STRATEGIC INSIGHT CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all">
+        <div className="glow-card p-6 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all h-full">
           <Target className="text-emerald-400 mb-3" size={24} />
           <p className="text-[10px] text-gray-500 uppercase font-black">Avg Hit Rate</p>
-          <h3 className="text-2xl font-bold text-white">{(overallData.reduce((acc: number, curr: GenreData) => acc + curr.hit_rate, 0) / overallData.length).toFixed(1)}%</h3>
+          <h3 className="text-2xl font-bold text-white">
+            {formatPercent((overallData?.reduce((acc: number, curr: GenreData) => acc + (curr?.hit_rate || 0), 0) || 0) / Math.max(1, overallData?.length || 0), 1)}
+          </h3>
           <p className="text-[10px] text-gray-400 mt-1">Weighted Performance</p>
         </div>
-        <div className="glass p-6 rounded-2xl border border-white/5 hover:border-rose-500/30 transition-all">
+        <div className="glow-card p-6 rounded-2xl border border-white/5 hover:border-rose-500/30 transition-all h-full">
           <Activity className="text-rose-400 mb-3" size={24} />
           <p className="text-[10px] text-gray-500 uppercase font-black">Volatility Index</p>
-          <h3 className="text-2xl font-bold text-white">{(overallData.reduce((acc: number, curr: GenreData) => acc + curr.volatility_index, 0) / overallData.length).toFixed(2)}</h3>
+          <h3 className="text-2xl font-bold text-white">
+            {formatVolatility((overallData?.reduce((acc: number, curr: GenreData) => acc + (curr?.volatility_index || 0), 0) || 0) / Math.max(1, overallData?.length || 0))}
+          </h3>
           <p className="text-[10px] text-gray-400 mt-1">ROI Standard Deviation</p>
         </div>
-        <div className="glass p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all">
+        <div className="glow-card p-6 rounded-2xl border border-white/5 hover:border-primary/30 transition-all group relative cursor-help h-full">
           <ShieldCheck className="text-primary mb-3" size={24} />
           <p className="text-[10px] text-gray-500 uppercase font-black">Budget Efficiency</p>
-          <h3 className="text-2xl font-bold text-white">₹{(overallData.reduce((acc: number, curr: GenreData) => acc + curr.budget_efficiency, 0) / overallData.length).toFixed(2)}</h3>
-          <p className="text-[10px] text-gray-400 mt-1">Profit generated per ₹1</p>
+          <h3 className="text-2xl font-bold text-white">
+            {formatROI((overallData?.reduce((acc: number, curr: GenreData) => acc + (curr?.budget_efficiency || 0), 0) || 0) / Math.max(1, overallData?.length || 0))}
+          </h3>
+          <p className="text-[10px] text-gray-400 mt-1">Avg ROI per ₹1</p>
+          <div className="absolute -top-10 left-0 w-48 p-2 bg-black/90 border border-white/10 rounded-lg text-[10px] text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20">
+            Profit generated per ₹1 invested (Budget vs Profit margin)
+          </div>
         </div>
-        <div className="glass p-6 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-all">
+        <div className="glow-card p-6 rounded-2xl border border-white/5 hover:border-amber-500/30 transition-all h-full">
           <TrendingUp className="text-amber-400 mb-3" size={24} />
           <p className="text-[10px] text-gray-500 uppercase font-black">Trend Momentum</p>
           <h3 className="text-2xl font-bold text-white">↑ Rising</h3>
           <p className="text-[10px] text-gray-400 mt-1">5-Year Growth Indicator</p>
         </div>
-        <div className="glass p-6 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all">
+        <div className="glow-card p-6 rounded-2xl border border-white/5 hover:border-emerald-500/30 transition-all h-full">
           <Star className="text-emerald-400 mb-3" size={24} />
           <p className="text-[10px] text-gray-500 uppercase font-black">Top Driver</p>
           <h3 className="text-xs font-bold text-white truncate max-w-full">
-            {overallData.sort((a, b) => b.weighted_roi - a.weighted_roi)[0]?.top_drivers[0]?.title || "N/A"}
+            {([...overallData]?.sort((a, b) => (b?.weighted_roi || 0) - (a?.weighted_roi || 0))?.[0]?.top_drivers?.[0]?.title || "N/A")}
           </h3>
           <p className="text-[10px] text-gray-400 mt-1">Highest ROI Catalyst</p>
         </div>
@@ -196,7 +208,7 @@ export default function GenreIntelligence() {
                       return (
                         <div className="bg-black/90 p-3 rounded-xl border border-white/10 shadow-2xl">
                           <p className="text-white font-bold text-xs mb-1">{data.genre}</p>
-                          <p className="text-primary font-black text-lg">{data.weighted_roi}x ROI</p>
+                          <p className="text-primary font-black text-lg">{formatROI(data.weighted_roi)}</p>
                           <p className="text-gray-400 text-[10px] mt-1">Total Movies: {data.total_movies}</p>
                           <div className="mt-2 pt-2 border-t border-white/5">
                             <p className="text-[8px] text-gray-500 uppercase font-black">Key Driver</p>
@@ -209,7 +221,7 @@ export default function GenreIntelligence() {
                   }}
                 />
                 <Bar dataKey="weighted_roi" radius={[4, 4, 0, 0]}>
-                  {[...overallData].sort((a, b) => b.weighted_roi - a.weighted_roi).slice(0, 8).map((_, index) => (
+                  {([...overallData]?.sort((a, b) => (b?.weighted_roi || 0) - (a?.weighted_roi || 0))?.slice(0, 8) || []).map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.8} />
                   ))}
                 </Bar>
@@ -239,7 +251,15 @@ export default function GenreIntelligence() {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={[...overallData].sort((a, b) => (shareType === 'volume' ? b.total_movies - a.total_movies : b.total_box_office - a.total_box_office)).slice(0, 8)}
+                  data={(() => {
+                    const sorted = [...overallData].sort((a, b) => (shareType === 'volume' ? b.total_movies - a.total_movies : b.total_box_office - a.total_box_office));
+                    const top8 = sorted.slice(0, 8);
+                    const others = sorted.slice(8);
+                    if (others.length === 0) return top8;
+
+                    const othersValue = others.reduce((acc, curr) => acc + (shareType === 'volume' ? curr.total_movies : curr.total_box_office), 0);
+                    return [...top8, { genre: 'Others', [shareType === 'volume' ? 'total_movies' : 'total_box_office']: othersValue }];
+                  })()}
                   cx="50%"
                   cy="50%"
                   innerRadius={60}
@@ -248,17 +268,17 @@ export default function GenreIntelligence() {
                   dataKey={shareType === 'volume' ? 'total_movies' : 'total_box_office'}
                   nameKey="genre"
                 >
-                  {[...overallData].sort((a, b) => (shareType === 'volume' ? b.total_movies - a.total_movies : b.total_box_office - a.total_box_office)).slice(0, 8).map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
+                  {([...overallData]?.slice(0, 9) || []).map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={index === 8 ? '#4b5563' : COLORS[index % COLORS.length]} stroke="none" />
                   ))}
                 </Pie>
                 <Tooltip
                   formatter={(value: any, name: string) => {
-                    const total = overallData.reduce((acc: number, curr: GenreData) => acc + (shareType === 'volume' ? curr.total_movies : curr.total_box_office), 0);
-                    const percent = ((value / total) * 100).toFixed(1);
-                    return [`${shareType === 'volume' ? value : '₹' + (value / 1e7).toFixed(1) + 'Cr'} (${percent}%)`, name];
+                    const total = Math.max(1, overallData.reduce((acc: number, curr: GenreData) => acc + (shareType === 'volume' ? curr.total_movies : curr.total_box_office), 0));
+                    const percent = formatPercent((value / total) * 100);
+                    return [`${shareType === 'volume' ? value : formatCurrencyCr(value)} (${percent})`, name];
                   }}
-                  contentStyle={{ background: 'rgba(0,0,0,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                  contentStyle={{ background: 'rgba(0,0,0,0.95)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', color: '#9ca3af' }} />
               </PieChart>
@@ -270,12 +290,6 @@ export default function GenreIntelligence() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* ROI Archetypes Scatter */}
         <div className="lg:col-span-2 glass rounded-3xl p-8 relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10 pointer-events-none">
-            <div className="absolute top-0 right-1/2 bottom-1/2 left-0 bg-emerald-500" />
-            <div className="absolute top-0 right-0 bottom-1/2 left-1/2 bg-amber-500" />
-            <div className="absolute top-1/2 right-1/2 bottom-0 left-0 bg-blue-500" />
-            <div className="absolute top-1/2 right-0 bottom-0 left-1/2 bg-rose-500" />
-          </div>
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-bold text-white flex items-center gap-2">
               <TrendingUp className="text-primary" size={20} /> ROI Archetypes & Segmentation
@@ -286,41 +300,77 @@ export default function GenreIntelligence() {
             <ResponsiveContainer width="100%" height="100%">
               <ScatterChart margin={{ top: 20, right: 30, bottom: 20, left: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                <XAxis type="number" dataKey="weighted_roi" name="Weighted ROI" domain={[0, 'auto']} stroke="#525252" fontSize={10} axisLine={false} tickLine={false} label={{ value: 'Weighted ROI', position: 'insideBottomRight', offset: 0, fill: '#525252', fontSize: 10 }} />
-                <YAxis type="number" dataKey="volatility_index" name="Volatility" domain={[0, 'auto']} stroke="#525252" fontSize={10} axisLine={false} tickLine={false} label={{ value: 'Volatility Index', angle: -90, position: 'insideLeft', fill: '#525252', fontSize: 10 }} />
-                <ZAxis type="number" dataKey="total_movies" range={[50, 600]} name="Total Movies" />
+                <XAxis
+                  type="number"
+                  dataKey="weighted_roi"
+                  name="Weighted ROI"
+                  domain={[0, 6]}
+                  stroke="#525252"
+                  fontSize={10}
+                  axisLine={false}
+                  tickLine={false}
+                  label={{ value: 'Weighted ROI Multiplier', position: 'insideBottomRight', offset: -10, fill: '#525252', fontSize: 10, fontWeight: 'bold' }}
+                />
+                <YAxis
+                  type="number"
+                  dataKey="volatility_index"
+                  name="Volatility"
+                  domain={[0, 2]}
+                  stroke="#525252"
+                  fontSize={10}
+                  axisLine={false}
+                  tickLine={false}
+                  label={{ value: 'Volatility Index', angle: -90, position: 'insideLeft', offset: 10, fill: '#525252', fontSize: 10, fontWeight: 'bold' }}
+                />
+                <ZAxis type="number" dataKey="total_movies" range={[50, 400]} name="Total Movies" />
+
+                {/* Quadrant Lines */}
+                <ReferenceLine x={2.0} stroke="#4ade80" strokeDasharray="5 5" strokeOpacity={0.3} label={{ position: 'top', value: 'ROI Threshold', fill: '#4ade80', fontSize: 8, opacity: 0.5 }} />
+                <ReferenceLine y={1.0} stroke="#f87171" strokeDasharray="5 5" strokeOpacity={0.3} label={{ position: 'right', value: 'Risk Pivot', fill: '#f87171', fontSize: 8, opacity: 0.5 }} />
+
+                {/* Quadrant Labels */}
+                <ReferenceArea x1={2.0} x2={6} y1={0} y2={1.0} fill="#10b981" fillOpacity={0.03} label={{ position: 'center', value: 'PRODUCER SWEET SPOT', fill: '#10b981', fontSize: 10, fontWeight: '900', opacity: 0.2 }} />
+                <ReferenceArea x1={2.0} x2={6} y1={1.0} y2={2} fill="#f59e0b" fillOpacity={0.03} label={{ position: 'center', value: 'SPECULATIVE BETS', fill: '#f59e0b', fontSize: 10, fontWeight: '900', opacity: 0.2 }} />
+                <ReferenceArea x1={0} x2={2.0} y1={0} y2={1.0} fill="#3b82f6" fillOpacity={0.03} label={{ position: 'center', value: 'STABLE GROWTH', fill: '#3b82f6', fontSize: 10, fontWeight: '900', opacity: 0.2 }} />
+                <ReferenceArea x1={0} x2={2.0} y1={1.0} y2={2} fill="#ef4444" fillOpacity={0.03} label={{ position: 'center', value: 'HIGH RISK ZONE', fill: '#ef4444', fontSize: 10, fontWeight: '900', opacity: 0.2 }} />
+
                 <Tooltip
                   cursor={{ strokeDasharray: '3 3' }}
                   content={({ active, payload }) => {
                     if (active && payload && payload.length) {
                       const data = payload[0].payload;
                       return (
-                        <div className="bg-black/90 p-4 rounded-xl border border-white/10 shadow-2xl max-w-xs">
+                        <div className="bg-black/95 p-4 rounded-xl border border-white/10 shadow-2xl max-w-xs backdrop-blur-xl">
                           <p className="text-white font-bold text-sm mb-1">{data.genre}</p>
-                          <div className={`text-[8px] font-black px-1.5 py-0.5 rounded border mb-3 inline-block ${data.quadrant === 'Producer Sweet Spot' ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' :
-                            data.quadrant === 'Speculative Bets' ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' :
-                              data.quadrant === 'Safe but weak' ? 'border-blue-500/30 text-blue-400 bg-blue-500/10' :
+                          <div className={`text-[8px] font-black px-1.5 py-0.5 rounded border mb-3 inline-block uppercase tracking-tighter ${data.weighted_roi >= 2.0 && data.volatility_index <= 1.0 ? 'border-emerald-500/30 text-emerald-400 bg-emerald-500/10' :
+                            data.weighted_roi >= 2.0 ? 'border-amber-500/30 text-amber-400 bg-amber-500/10' :
+                              data.volatility_index <= 1.0 ? 'border-blue-500/30 text-blue-400 bg-blue-500/10' :
                                 'border-rose-500/30 text-rose-400 bg-rose-500/10'
-                            }`}>{data.quadrant}</div>
-                          <div className="grid grid-cols-2 gap-4">
+                            }`}>
+                            {data.weighted_roi >= 2.0 && data.volatility_index <= 1.0 ? 'Producer Sweet Spot' :
+                              data.weighted_roi >= 2.0 ? 'Speculative Bets' :
+                                data.volatility_index <= 1.0 ? 'Stable Growth' : 'High Risk zone'}
+                          </div>
+                          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-white/5">
                             <div>
-                              <p className="text-[8px] text-gray-500 uppercase font-bold">ROI</p>
-                              <p className="text-white font-black">{data.weighted_roi}x</p>
+                              <p className="text-[8px] text-gray-500 uppercase font-bold">Weighted ROI</p>
+                              <p className="text-white font-black text-sm">{formatROI(data.weighted_roi)}</p>
                             </div>
                             <div>
-                              <p className="text-[8px] text-gray-500 uppercase font-bold">Risk</p>
-                              <p className="text-white font-black">{data.volatility_index}</p>
+                              <p className="text-[8px] text-gray-500 uppercase font-bold">Volatility</p>
+                              <p className="text-white font-black text-sm">{formatVolatility(data.volatility_index)}</p>
                             </div>
                           </div>
+                          <p className="text-[8px] text-gray-400 mt-2 font-medium italic">Based on {data.total_movies} cinematic records</p>
                         </div>
                       );
                     }
                     return null;
                   }}
                 />
-                <Scatter name="Genres" data={overallData}>
-                  {overallData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.7} />
+                <Scatter name="Genres" data={overallData.filter(d => d.weighted_roi < 8)}>
+                  {overallData.filter(d => d.weighted_roi < 8).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} fillOpacity={0.8} strokeWidth={1} stroke="rgba(255,255,255,0.2)" />
                   ))}
                 </Scatter>
               </ScatterChart>
@@ -346,7 +396,7 @@ export default function GenreIntelligence() {
                     </div>
                   </div>
                   <p className="text-xs text-gray-400 leading-relaxed italic">
-                    "{g.genre} shows {g.weighted_roi > 1.5 ? 'superior' : 'stable'} ROI efficiency ({g.weighted_roi}x) with {g.volatility_index < 0.8 ? 'managed' : 'high'} volatility. Ideal for {g.avg_budget < 50000000 ? 'mid-budget' : 'high-capital'} distribution."
+                    "{g.genre} shows {g.weighted_roi > 1.5 ? 'superior' : 'stable'} ROI efficiency ({formatROI(g.weighted_roi)}) with {g.volatility_index < 0.8 ? 'managed' : 'high'} volatility ({formatVolatility(g.volatility_index)}). Ideal for {g.avg_budget < 50000000 ? 'mid-budget' : 'high-capital'} distribution."
                   </p>
                 </div>
               ))}
