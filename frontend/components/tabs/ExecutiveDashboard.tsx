@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { getGlobalMetrics } from "@/core/analyticsEngine";
 import {
   BarChart3,
   TrendingUp,
@@ -31,10 +31,10 @@ export default function ExecutiveDashboard() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = () => {
     try {
-      const data = await api.getDashboardMetrics();
-      setMetrics(data);
+      const data = getGlobalMetrics();
+      setMetrics(data as any);
     } catch (error) {
       console.error("Error loading dashboard metrics:", error);
     } finally {
@@ -43,13 +43,12 @@ export default function ExecutiveDashboard() {
   };
 
   const getSentiment = () => {
-    const velocity = metrics?.market_velocity || 0;
-    const volatility = metrics?.risk_index || 0;
+    const label = metrics?.sentiment || "Neutral";
+    const stage = metrics?.sentiment_stage || "neutral";
 
-    if (velocity < 0) return { label: "Bearish", class: "text-rose-400", stage: "bearish" };
-    if (velocity > 0 && volatility > 2.0) return { label: "Cautious Bullish", class: "text-amber-400", stage: "cautious" };
-    if (velocity > 0) return { label: "Bullish", class: "text-emerald-400", stage: "bullish" };
-    return { label: "Neutral", class: "text-gray-400", stage: "neutral" };
+    if (stage === "bullish") return { label, class: "text-emerald-400", stage };
+    if (stage === "bearish") return { label, class: "text-rose-400", stage };
+    return { label, class: "text-gray-400", stage };
   };
 
   if (loading) {
@@ -93,7 +92,9 @@ export default function ExecutiveDashboard() {
                 <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">Market Velocity</p>
                 <div className="flex flex-col">
                   <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-white">{formatPercent(metrics?.market_velocity, 1)}</span>
+                    <span className="text-3xl font-bold text-white">
+                      {(metrics?.market_velocity >= 0 ? "+" : "") + formatPercent(metrics?.market_velocity, 1)}
+                    </span>
                     <span className={`${(metrics?.market_velocity || 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'} text-xs font-bold mb-1 flex items-center gap-0.5`}>
                       <ArrowUpRight size={12} className={(metrics?.market_velocity || 0) < 0 ? 'rotate-90' : ''} />
                     </span>
@@ -112,7 +113,7 @@ export default function ExecutiveDashboard() {
                 <div className="flex flex-col">
                   <div className="flex items-end gap-2">
                     <span className="text-3xl font-bold text-white">
-                      {metrics?.risk_index > 2.0 ? "High Volatility" : metrics?.risk_index > 1.0 ? "Moderate" : "Stable"}
+                      {metrics?.risk_label || "Stable"}
                     </span>
                   </div>
                   <p className="text-[10px] text-gray-400 font-medium italic mt-1 underline decoration-primary/30">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/lib/api";
+import { generateExport } from "@/core/analyticsEngine";
 import {
     FileDown,
     CheckCircle2,
@@ -25,8 +25,9 @@ export default function ExportReport() {
         setLoading(true);
         setDownloaded(false);
         try {
-            const blob = await api.exportReport(format);
-            const filename = `CineIntel_Report_${new Date().toISOString().split('T')[0]}.${format}`;
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Artificial generation delay
+            const blob = generateExport(format);
+            const filename = `CineIntel_Report_${new Date().toISOString().split('T')[0]}.${format === 'pdf' ? 'txt' : 'json'}`;
             downloadBlob(blob, filename);
             setDownloaded(true);
         } catch (e) {

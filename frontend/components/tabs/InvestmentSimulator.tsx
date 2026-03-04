@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { predictInvestment, getAllGenres } from "@/core/analyticsEngine";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Cell, PieChart as RePieChart, Pie
@@ -38,10 +38,10 @@ export default function InvestmentSimulator() {
     loadGenres();
   }, []);
 
-  const loadGenres = async () => {
+  const loadGenres = () => {
     try {
-      const data = await api.getAllGenres();
-      setGenres(data.genres || []);
+      const g = getAllGenres();
+      setGenres(g || []);
     } catch (error) {
       console.error("Error loading genres:", error);
     }
@@ -71,8 +71,7 @@ export default function InvestmentSimulator() {
       setError("Runtime must be between 60 and 240 minutes.");
       return;
     }
-    if (plan.budget < 0.5 || (plan.budget > 1500 && plan.budget !== 0)) {
-      // Allow temporary 0 during typing
+    if (plan.budget !== 0 && (plan.budget < 0.5 || plan.budget > 1500)) {
       setError("Budget must be between ₹0.5 Cr and ₹1500 Cr.");
       return;
     }
@@ -83,11 +82,11 @@ export default function InvestmentSimulator() {
       // Phase 2: Show 1.5–2 second loading animation artificially
       await new Promise(resolve => setTimeout(resolve, 1500));
 
-      const result = await api.predictInvestment({
+      const result = predictInvestment({
         genres: plan.genres,
         budget: plan.budget,
         runtime: plan.runtime,
-        release_month: plan.releaseMonth,
+        releaseMonth: plan.releaseMonth,
       });
       setPrediction(result);
     } catch (error) {
@@ -101,7 +100,7 @@ export default function InvestmentSimulator() {
   const ScoreGauge = ({ value }: { value: number }) => {
     const circumference = 2 * Math.PI * 54;
     const offset = circumference - (value / 100) * circumference;
-    const color = value > 75 ? "#10b981" : value > 50 ? "#f59e0b" : "#ef4444"; // Green Safe, Yellow Moderate, Red Risk
+    const color = value >= 90 ? "#10b981" : value >= 75 ? "#8b5cf6" : value >= 60 ? "#d946ef" : value >= 40 ? "#f59e0b" : "#ef4444";
 
     return (
       <div className="relative w-40 h-40">
@@ -126,7 +125,7 @@ export default function InvestmentSimulator() {
           <div className="absolute -bottom-2 w-full flex justify-center">
             <div className="bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/10 flex items-center gap-1">
               <ShieldCheck size={10} className="text-primary" />
-              <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">Confidence: {value}%</span>
+              <span className="text-[8px] font-black text-gray-400 uppercase tracking-tighter">AI Confidence: {value}%</span>
             </div>
           </div>
         )}
@@ -432,12 +431,16 @@ export default function InvestmentSimulator() {
                 {/* Score Panel */}
                 <div className="md:col-span-4 glass-card p-8 flex flex-col items-center justify-center animate-in zoom-in-95 duration-700 delay-100 fill-mode-both">
                   <ScoreGauge value={prediction.greenlight_score} />
-                  <div className={`mt-4 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${prediction.greenlight_score > 75 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                    prediction.greenlight_score > 50 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
-                      'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                  <div className={`mt-4 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${prediction.greenlight_score >= 90 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                    prediction.greenlight_score >= 75 ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' :
+                      prediction.greenlight_score >= 60 ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20' :
+                        prediction.greenlight_score >= 40 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' :
+                          'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                     }`}>
-                    {prediction.greenlight_score > 75 ? 'Safe Investment' :
-                      prediction.greenlight_score > 50 ? 'Moderate Feasibility' : 'High Risk Profile'}
+                    {prediction.greenlight_score >= 90 ? 'Exceptional Opportunity' :
+                      prediction.greenlight_score >= 75 ? 'Strong Opportunity' :
+                        prediction.greenlight_score >= 60 ? 'Moderate Opportunity' :
+                          prediction.greenlight_score >= 40 ? 'Risky' : 'High Risk'}
                   </div>
                 </div>
 
@@ -462,13 +465,13 @@ export default function InvestmentSimulator() {
                       <div key={type} className="space-y-2">
                         <div className="flex justify-between items-end">
                           <span className="text-[10px] text-gray-500 font-bold uppercase">{type}</span>
-                          <span className="text-xl font-black text-white">{prediction.probabilities[type]}%</span>
+                          <span className="text-xl font-black text-white">{(prediction.probabilities as any)[type]}%</span>
                         </div>
                         <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
                           <div
                             className={`h-full transition-all duration-1000 delay-${700 + (idx * 150)} ${type === 'hit' ? 'bg-emerald-500' : type === 'average' ? 'bg-amber-500' : 'bg-rose-500'
                               }`}
-                            style={{ width: `${prediction.probabilities[type]}%` }}
+                            style={{ width: `${(prediction.probabilities as any)[type]}%` }}
                           />
                         </div>
                       </div>
@@ -520,7 +523,7 @@ export default function InvestmentSimulator() {
                     </div>
                     <div className="flex flex-col items-end">
                       <span className="text-[8px] text-gray-500 font-black uppercase">Historical Peak</span>
-                      <span className="text-xs font-bold text-white">₹{prediction.budget_intelligence.max_successful} Cr</span>
+                      <span className="text-xs font-bold text-white">₹{prediction.budget_intelligence.max_historical?.toFixed(1) || 0} Cr</span>
                     </div>
                   </div>
                 </div>
@@ -619,9 +622,15 @@ export default function InvestmentSimulator() {
                       <div key={idx} className="bg-white/[0.02] border border-white/5 rounded-2xl p-6">
                         <div className="flex items-center justify-between mb-4">
                           <h4 className="text-lg font-black text-white italic">{insight.genre}</h4>
-                          <div className="text-right">
-                            <span className="text-[8px] text-gray-500 font-black uppercase block">Avg ROI</span>
-                            <span className={`text-sm font-bold ${insight.avg_roi >= 1 ? 'text-emerald-400' : 'text-rose-400'}`}>{insight.avg_roi}x</span>
+                          <div className="text-right flex gap-4">
+                            <div className="text-right">
+                              <span className="text-[8px] text-gray-500 font-black uppercase block">Avg ROI</span>
+                              <span className={`text-sm font-bold ${insight.avg_roi >= 1 ? 'text-emerald-400' : 'text-rose-400'}`}>{insight.avg_roi}x</span>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[8px] text-gray-500 font-black uppercase block">Median ROI</span>
+                              <span className="text-sm font-bold text-blue-400">{insight.median_roi}x</span>
+                            </div>
                           </div>
                         </div>
 
@@ -644,7 +653,7 @@ export default function InvestmentSimulator() {
                           <div>
                             <p className="text-[9px] text-gray-400 font-black uppercase mb-2 flex items-center gap-1.5"><TrendingUp size={10} className="text-emerald-400" /> Top Performers</p>
                             <div className="space-y-1.5">
-                              {insight.top_hits.map((m: any, i: number) => (
+                              {insight.top_hits?.map((m: any, i: number) => (
                                 <div key={i} className="flex justify-between text-[10px]">
                                   <span className="text-gray-300 truncate max-w-[140px]">{m.title}</span>
                                   <span className="text-emerald-400 font-bold">{m.roi}x</span>
@@ -655,7 +664,7 @@ export default function InvestmentSimulator() {
                           <div>
                             <p className="text-[9px] text-gray-400 font-black uppercase mb-2 flex items-center gap-1.5"><TrendingDown size={10} className="text-rose-400" /> High Risk Titles</p>
                             <div className="space-y-1.5">
-                              {insight.top_flops.map((m: any, i: number) => (
+                              {insight.top_flops?.map((m: any, i: number) => (
                                 <div key={i} className="flex justify-between text-[10px]">
                                   <span className="text-gray-300 truncate max-w-[140px]">{m.title}</span>
                                   <span className="text-rose-400 font-bold">{m.roi}x</span>
@@ -715,11 +724,11 @@ export default function InvestmentSimulator() {
                       <div className="mb-4">
                         <div className="flex justify-between items-start mb-2">
                           <p className="text-xs font-black text-white uppercase italic leading-tight max-w-[70%]">{movie.title}</p>
-                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border-t-2 ${movie.success_label === 'Hit' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
-                            movie.success_label === 'Average' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                          <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border-t-2 ${movie.performance_tag === 'Breakout' || movie.performance_tag === 'Hit' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' :
+                            movie.performance_tag === 'Average' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
                               'bg-rose-500/10 text-rose-400 border-rose-500/30'
                             }`}>
-                            {movie.success_label}
+                            {movie.performance_tag}
                           </span>
                         </div>
                         <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">{movie.year}</p>
@@ -728,11 +737,11 @@ export default function InvestmentSimulator() {
                       <div className="flex justify-between items-end pt-4 border-t border-white/5">
                         <div>
                           <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">Budget</p>
-                          <p className="text-xs font-bold text-gray-300">₹{movie.budget_cr || 0} Cr</p>
+                          <p className="text-xs font-bold text-gray-300">₹{Math.round(movie.budget || 0)} Cr</p>
                         </div>
                         <div className="text-right">
                           <p className="text-[8px] text-gray-600 font-black uppercase tracking-widest">ROI</p>
-                          <p className={`text-sm font-black ${movie.roi >= 1 ? 'text-emerald-400' : 'text-rose-400'}`}>{(movie.roi || 0).toFixed(1)}x</p>
+                          <p className={`text-sm font-black ${movie.roi >= 1 ? 'text-emerald-400' : 'text-rose-400'}`}>{movie.roi.toFixed(1)}x</p>
                         </div>
                       </div>
                     </div>

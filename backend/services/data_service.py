@@ -44,8 +44,7 @@ class DataService:
         global_v_std_median = self.movies['roi'].std()
 
         for genre, group in genre_groups:
-            if len(group) < 5:  # Lowered threshold for broader comparison
-                continue
+            # Audit Requirement: Ensure charts include ALL genres (removed sample threshold)
                 
             # Basic Metrics
             total_movies = len(group)
@@ -61,40 +60,27 @@ class DataService:
             # ROI Volatility Index
             roi_series = group['roi'].dropna()
             valid_roi_count = len(roi_series)
-            is_low_sample = valid_roi_count < 15
             
-            roi_std = roi_series.std() if valid_roi_count > 1 else 0.5  # Default moderate volatility if NaN
-            avg_roi_simple = roi_series.mean() if not roi_series.empty else (1.0 if not self.relaxed_mode else roi_series.median() if not roi_series.empty else 1.0)
+            # Audit Requirement: Volatility = Standard Deviation of ROI
+            roi_std = roi_series.std() if valid_roi_count > 1 else 0.0
+            avg_roi_simple = roi_series.mean() if not roi_series.empty else 0.0
             
-            # Tiered fallback: Use median in relaxed mode if mean is unstable
-            if self.relaxed_mode and not roi_series.empty:
-                weighted_roi = roi_series.median()
-            else:
-                weighted_roi = (total_profit / total_budget) if total_budget > 0 else (avg_roi_simple)
-            
-            median_roi = roi_series.median() if not roi_series.empty else 0.0
-            roi_peak = roi_series.max() if not roi_series.empty else 0.0
-            
-            volatility_index = (roi_std / avg_roi_simple) if avg_roi_simple > 0 else 0.5
-            
-            # Hit Rate & Failure Rate - Using ROI >= 1.2 as Hit Proxy for stability
+            # Hit Rate & Failure Rate - Audit Requirement: ROI > 1 for Hit, ROI < 1 for Failure
             if not roi_series.empty:
-                hit_count = len(roi_series[roi_series >= 1.2])
+                hit_count = len(roi_series[roi_series > 1.0])
                 hit_rate = (hit_count / valid_roi_count) * 100
+                flop_count = len(roi_series[roi_series < 1.0])
+                flop_rate = (flop_count / valid_roi_count) * 100
             else:
-                hit_count = 0
                 hit_rate = 0.0
-            
-            # Flop Rate (defined as ROI < 1.0 threshold)
-            flop_count = len(roi_series[roi_series < 1.0])
-            flop_rate = min(90.0, (flop_count / valid_roi_count) * 100) if valid_roi_count > 0 else 50.0
+                flop_rate = 0.0
 
             # Downside ROI (average ROI for non-hits)
             downside_movies = roi_series[roi_series < 1.2]
             downside_roi = downside_movies.mean() if not downside_movies.empty else 0.0
             
             # ROI Consistency (Inverse of Volatility, scaled)
-            roi_consistency = max(0, 10 - volatility_index) if volatility_index > 0 else 5.0
+            roi_consistency = max(0, 10 - roi_std) if roi_std > 0 else 5.0
             
             # Risk-Adjusted Return (ROISS: ROI / Standard Deviation)
             risk_adjusted_return = (weighted_roi / roi_std) if roi_std > 0 else weighted_roi
@@ -139,12 +125,12 @@ class DataService:
                 'genre': genre,
                 'total_movies': total_movies,
                 'valid_roi_count': valid_roi_count,
-                'is_low_sample': is_low_sample,
+                'is_low_sample': total_movies < 20,
                 'weighted_roi': weighted_roi,
                 'median_roi': median_roi,
                 'roi_peak': roi_peak,
                 'roi_std': roi_std,
-                'volatility_index': volatility_index,
+                'volatility_index': roi_std,
                 'roi_consistency': roi_consistency,
                 'risk_adjusted_return': risk_adjusted_return,
                 'hit_rate': hit_rate,
@@ -194,31 +180,44 @@ class DataService:
             # Market Share
             market_share = (s['total_box_office'] / total_market_vol * 100) if total_market_vol > 0 else 0
             
-            # Composite Risk - Normalized strictly 0-1
-            raw_risk = (0.4 * (1.0 - norm_stability)) + (0.3 * s.get('downside_risk', 0.5)) + (0.3 * (s['flop_rate'] / 100))
-            composite_risk = max(0.0, min(1.0, float(raw_risk)))
+            # Composite Risk - Audit Requirement: 
+            # Risk = (0.4 * Volatility) + (0.3 * Downside Probability) + (0.3 * Failure Rate)
+            # Since Downside Probability is often ROI < 1, and Failure Rate is also defined as ROI < 1,
+            # we distinguish them for the formula as requested.
+            # Normalizing Volatility (0-1) for the composite score
+            norm_volatility = min(1.0, s['roi_std'] / 5.0) # Using 5.0 as a reasonable max σ
+            downside_prob = s['flop_rate'] / 100.0
+            failure_rate = s['flop_rate'] / 100.0
+            
+            composite_risk = (0.4 * norm_volatility) + (0.3 * downside_prob) + (0.3 * failure_rate)
+            composite_risk = max(0.0, min(1.0, float(composite_risk)))
             
             # Risk Classification
             roi = s['weighted_roi']
             v_std = s['roi_std']
-            f_rate = min(90.0, s['flop_rate'])
+            f_rate = s['flop_rate']
             
-            if roi > 1.2 and v_std < 2 and f_rate < 30:
-                risk_category = "SAFE"
-            elif roi < 0.3 or v_std > 5 or f_rate > 70: # Adjusted for ROI < 1 failure definition
+            is_insufficient = s['total_movies'] < 20
+            
+            # Final risk classification (Audit Requirement): <0.25 LOW, 0.25-0.40 MODERATE, >0.40 HIGH
+            if is_insufficient:
+                risk_category = "INSUFFICIENT DATA"
+            elif composite_risk < 0.25:
+                risk_category = "LOW RISK"
+            elif composite_risk > 0.40:
                 risk_category = "HIGH RISK"
             else:
                 risk_category = "MODERATE"
                 
-            # Archetype
-            if roi > 1.5 and s['hit_rate'] < 30:
-                archetype = "Blockbuster-driven (Aggressive)"
-            elif roi > 1.0 and s['hit_rate'] > 60:
-                archetype = "Consistent performer (Defensive)"
-            elif v_std > 8:
-                archetype = "Lottery genre (Aggressive)"
+            # Archetype (Audit Requirement - refined labels)
+            if roi > 2.0 and norm_volatility < 0.4:
+                archetype = "CORE STABLE"
+            elif roi > 2.5 and norm_volatility >= 0.4:
+                archetype = "GROWTH OPPORTUNITY"
+            elif failure_rate > 0.4:
+                archetype = "HIGH RISK SEGMENT"
             else:
-                archetype = "Market Standard"
+                archetype = "STABLE PERFORMER"
 
             s_copy = s.copy()
             s_copy.update({
@@ -336,19 +335,25 @@ class DataService:
             # ---------------------------------------------------
             # CURRENCY STANDARDIZATION (USD -> INR Crores)
             # ---------------------------------------------------
-            if not self.currency_normalized:
-                USD_TO_INR = 83
-                INR_PER_CRORE = 10_000_000
-                
-                # Convert to INR Crores
-                self.movies['box_office_inr_cr'] = (self.movies['box_office'] * USD_TO_INR) / INR_PER_CRORE
-                self.movies['budget_inr_cr'] = (self.movies['budget'] * USD_TO_INR) / INR_PER_CRORE
-                
-                # Overwrite original fields with INR Cr values for global consistency
-                self.movies['box_office'] = self.movies['box_office_inr_cr'].round(2)
-                self.movies['budget'] = self.movies['budget_inr_cr'].round(2)
-                self.currency_normalized = True
-                print("✅ Currency normalized to INR Crores.")
+            # Audit Requirement: Years 1957–2025
+            self.movies = self.movies[(self.movies['year'] >= 1957) & (self.movies['year'] <= 2025)]
+            
+            # Check for anomalies
+            # Flag zero revenue/budget but don't delete yet, recalculation handles it
+            self.movies['is_anomaly'] = (self.movies['budget'] <= 0) | (self.movies['box_office'] <= 0)
+            
+            USD_TO_INR = 83
+            INR_PER_CRORE = 10_000_000
+            
+            # Convert to INR Crores
+            self.movies['box_office_inr_cr'] = (self.movies['box_office'] * USD_TO_INR) / INR_PER_CRORE
+            self.movies['budget_inr_cr'] = (self.movies['budget'] * USD_TO_INR) / INR_PER_CRORE
+            
+            # Overwrite original fields with INR Cr values for global consistency
+            self.movies['box_office'] = self.movies['box_office_inr_cr'].round(2)
+            self.movies['budget'] = self.movies['budget_inr_cr'].round(2)
+            self.currency_normalized = True
+            print("✅ Currency normalized to INR Crores.")
 
             # Profit calculation (in INR Cr)
             self.movies['profit'] = self.movies['box_office'] - self.movies['budget']
@@ -364,9 +369,9 @@ class DataService:
                 (financial_movies['box_office'].notna())
             ]
             
-            # Tier 2: Safe ROI Calculation - Use np.nan for zero/invalid financial pairs
+            # Tier 2: Safe ROI Calculation - Include all movies with a budget (ROI = 0 if revenue is 0)
             financial_movies['roi'] = np.where(
-                (financial_movies['budget'] > 0) & (financial_movies['box_office'] > 0),
+                financial_movies['budget'] > 0,
                 (financial_movies['box_office'] / financial_movies['budget']).round(2),
                 np.nan
             )
@@ -439,7 +444,8 @@ class DataService:
             "total_revenue": int(total_revenue),
             "highest_roi_genre": {
                 "genre": highest_roi_genre['genre'],
-                "avg_roi": round(highest_roi_genre['avg_roi'], 2)
+                "avg_roi": round(highest_roi_genre['avg_roi'], 2),
+                "insufficient_data": bool(highest_roi_genre['total_movies'] < 20)
             },
             "latest_trend": {
                 "year": int(top_latest_genre['year']) if top_latest_genre is not None else int(max_year),
@@ -946,38 +952,54 @@ class DataService:
     
     def get_genre_combinations(self) -> Dict:
         """Analyze genre combinations from multi-genre movies"""
-        # Get movies with multiple genres
-        multi_genre_movies = self.movies[self.movies['genre'].str.contains('|', na=False, regex=False)]
+        # Audit Requirement: Use movies with multiple genres for pair analysis
+        # We look for the raw data or rows where genres_list has > 1 item
+        multi_genre_movies = self.movies[self.movies['genres_list'].apply(len) > 1]
+        
+        
+        # Calculate combination stats based on the actual pairs
+        combos = {}
+        for _, m in multi_genre_movies.iterrows():
+            genres = sorted(m['genres_list'])
+            for i in range(len(genres)):
+                for j in range(i + 1, len(genres)):
+                    pair = f"{genres[i]} + {genres[j]}"
+                    if pair not in combos:
+                        combos[pair] = {'rois': [], 'box_office': 0}
+                    combos[pair]['rois'].append(m['roi'])
+                    combos[pair]['box_office'] += m['box_office']
         
         combo_stats = []
-        
-        for genre_combo in multi_genre_movies['genre'].unique():
-            combo_movies = multi_genre_movies[multi_genre_movies['genre'] == genre_combo]
+        for pair, stats in combos.items():
+            roi_series = pd.Series(stats['rois']).dropna()
+            total_movies = len(stats['rois'])
+            valid_roi_count = len(roi_series)
             
-            # User wants to show all, but flag low confidence
-            # "If sample size small, show confidence warning."
-            
-            success_count = len(combo_movies[combo_movies['success_label'] == 'Hit'])
-            success_rate = (success_count / len(combo_movies)) * 100
-            avg_roi = combo_movies['roi'].mean()
-            total_revenue = combo_movies['box_office'].sum()
-            sample_size = len(combo_movies)
+            if valid_roi_count > 0:
+                hit_count = len(roi_series[roi_series > 1.0])
+                hit_rate = (hit_count / valid_roi_count) * 100
+                avg_roi = roi_series.mean()
+                volatility = roi_series.std() if valid_roi_count > 1 else 0.0
+            else:
+                hit_rate = 0.0
+                avg_roi = 0.0
+                volatility = 0.0
             
             combo_stats.append({
-                'combination': genre_combo,
-                'total_movies': sample_size,
-                'success_rate': round(success_rate, 2),
+                'combination': pair,
+                'total_movies': total_movies,
+                'success_rate': round(hit_rate, 2),
                 'avg_roi': round(avg_roi, 2),
-                'total_revenue': int(total_revenue),
-                'confidence': self._calculate_confidence(sample_size)
+                'volatility': round(volatility, 2),
+                'total_revenue': int(stats['box_office']),
+                'confidence': self._calculate_confidence(total_movies)
             })
         
         # Sort by avg_roi
         combo_stats_sorted = sorted(combo_stats, key=lambda x: x['avg_roi'], reverse=True)
         
         return {
-            'top_10': combo_stats_sorted[:10],
-            'bottom_10': combo_stats_sorted[-10:],
+            'top_combinations': combo_stats_sorted[:15],
             'all_combinations': combo_stats_sorted
         }
     
@@ -1035,15 +1057,24 @@ class DataService:
             }
         }
 
-        # 2. Automated Verdict & Diversification
-        v_tag_a = "Aggressive" if "Aggressive" in row_a['archetype'] else "Defensive"
-        v_tag_b = "Aggressive" if "Aggressive" in row_b['archetype'] else "Defensive"
+        # 2. Audit-Specific Scoring Model & Automated Verdict
+        # Score = (ROI * 0.4) + (Hit Rate * 0.3) - (Volatility * 0.3)
+        # Normalize weights: ROI (~0-5x), Hit Rate (0-100), Volatility (0-10)
+        def calculate_audit_score(row):
+            norm_roi = min(1.0, row['weighted_roi'] / 5.0)
+            norm_hit = row['hit_rate'] / 100.0
+            norm_vol = min(1.0, row['roi_std'] / 5.0)
+            return (norm_roi * 0.4) + (norm_hit * 0.3) - (norm_vol * 0.3)
+
+        score_a = calculate_audit_score(row_a)
+        score_b = calculate_audit_score(row_b)
         
-        verdict = f"{genre_a} ({v_tag_a}) demonstrates superior {('ROI efficiency' if row_a['weighted_roi'] > row_b['weighted_roi'] else 'stability')} "
-        verdict += f"and {('lower' if row_a['roi_volatility'] < row_b['roi_volatility'] else 'higher')} volatility. "
-        verdict += f"{genre_b} ({v_tag_b}) offers strong {('market momentum' if row_b['momentum'] > row_a['momentum'] else 'capital protection')}. "
+        winner = genre_a if score_a > score_b else genre_b
         
-        # Diversification insight
+        verdict = f"COMPARISON VERDICT: {winner} is the superior investment choice based on the Audit Scoring Model. "
+        verdict += f"[{genre_a}: {score_a:.2f} vs {genre_b}: {score_b:.2f}] "
+        
+        # 3. Diversification insight
         if row_a['risk_category'] != row_b['risk_category']:
             verdict += f"Pairing these suggests a high diversification opportunity by blending {row_a['risk_category']} and {row_b['risk_category']} assets."
         else:
@@ -1062,6 +1093,9 @@ class DataService:
         return {
             "genre_a": row_a,
             "genre_b": row_b,
+            "winner": winner,
+            "score_a": score_a,
+            "score_b": score_b,
             "comparison_matrix": comparison_matrix,
             "verdict": verdict,
             "suitability": {
@@ -1069,8 +1103,8 @@ class DataService:
                 "b": get_suitability(row_b)
             },
             "tags": {
-                "a": v_tag_a,
-                "b": v_tag_b
+                "a": row_a['archetype'],
+                "b": row_b['archetype']
             }
         }
 

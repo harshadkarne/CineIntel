@@ -45,19 +45,29 @@ export const formatVolatility = (vol: any): string => {
 // formats percentages (45.2 -> 45.2%) 
 export const formatPercent = (pct: any, decimals: number = 1): string => {
     if (!isValidNumber(pct)) return "Data insufficient";
-    const safePct = Math.max(0, Number(pct));
-    return `${safePct.toFixed(decimals)}%`;
+    const val = Number(pct);
+    return `${val.toFixed(decimals)}%`;
+};
+
+// Formats raw currency in Rupees to INR Crores (₹X.XX Cr)
+export const formatCurrency = (value: any): string => {
+    if (!isValidNumber(value)) return "N/A";
+    const num = Number(value);
+    if (num === 0) return "N/A";
+    const crores = num / 10000000;
+    return `₹${crores.toFixed(1)} Cr`;
 };
 
 // formats Indian Currency to Crores (Assumes input is already in Crores)
 export const formatCurrencyCr = (value: any): string => {
     if (!isValidNumber(value)) return "Data insufficient";
-    if (Number(value) === 0) return "₹ 0.00 Cr";
+    const num = Number(value);
+    if (num === 0) return "₹0 Cr";
 
-    // Standardized: All financial data is converted to INR Crores at ingestion.
-    // Logic: Input is already in Crores.
-    const crores = Number(value);
-    return `₹ ${crores.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Cr`;
+    // Input is already in Crores (normalized from USD * 83 / 10^7).
+    // Display as Whole numbers or with 1 decimal if needed, e.g. "₹16.5 Cr", "₹250 Cr"
+    if (num >= 100) return `₹${Math.round(num)} Cr`;
+    return `₹${num.toFixed(1)} Cr`;
 };
 
 // Helper for UI badges
