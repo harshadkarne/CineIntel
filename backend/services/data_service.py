@@ -9,7 +9,10 @@ from services.discovery_service import DiscoveryService
 class DataService:
     """Service for loading and managing CSV data"""
     
-    def __init__(self, data_dir: str = "../movie-data-pipeline"):
+    def __init__(self, data_dir: str = None):
+        import os
+        if data_dir is None:
+            data_dir = os.getenv("DATA_DIR", "../movie-data-pipeline")
         self.data_dir = Path(data_dir)
         self.movies: pd.DataFrame = None
         self.genre_year_stats: pd.DataFrame = None
